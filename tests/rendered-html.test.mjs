@@ -22,9 +22,9 @@ test("server-renders the document review prototype", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>문서체크 \| 행정 문서 사전 검토<\/title>/i);
-  assert.match(html, /신청서 내용 입력/);
-  assert.match(html, /누락 항목 검토하기/);
+  assert.match(html, /<title>문서체크 \| 신청서 양식 배포 전 검토<\/title>/i);
+  assert.match(html, /배포할 양식 내용 입력/);
+  assert.match(html, /양식 누락 검토하기/);
   assert.match(html, /실제 AI가 아닌 규칙 기반 예시/);
   assert.match(html, /부서 피드백에서 확인할 가정과 질문/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
@@ -37,8 +37,8 @@ test("removes the disposable starter preview", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /누락 항목 검토하기/);
-  assert.match(layout, /title: "문서체크 \| 행정 문서 사전 검토"/);
+  assert.match(page, /양식 누락 검토하기/);
+  assert.match(layout, /const title = "문서체크 \| 신청서 양식 배포 전 검토"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", templateRoot)));
 });
