@@ -23,6 +23,14 @@ type ReviewRule = {
 
 type ReviewIssue = ReviewRule & { evidence: string };
 
+type StyledBlock = {
+  id: string;
+  kind: "title" | "heading" | "body" | "notice" | "bullet" | "information";
+  text: string;
+  label?: string;
+  value?: string;
+};
+
 const SEARCH_TERM_GROUPS = [
   ["비용", "요금", "수수료", "이용료", "참가비", "무료", "금액", "납부", "결제", "돈"],
   ["문의", "문의처", "연락", "연락처", "전화", "이메일", "담당자"],
@@ -156,6 +164,35 @@ function analyzeDocument(text: string): ReviewIssue[] {
   });
 }
 
+function createStyledBlocks(text: string): StyledBlock[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.map((line, index) => {
+    const id = `${index}-${line.slice(0, 16)}`;
+    const titleText = line.match(/^\[(.+)]$/)?.[1] ?? line;
+
+    if (index === 0) return { id, kind: "title", text: titleText };
+    if (/^(?:※|주의|유의|필수|알림)|(?:반드시|꼭)\s/.test(line)) return { id, kind: "notice", text: line };
+    if (/^(?:[-•·▪]|\d+[.)])\s*/.test(line)) {
+      return { id, kind: "bullet", text: line.replace(/^(?:[-•·▪]|\d+[.)])\s*/, "") };
+    }
+
+    const information = line.match(/^([^:：]{1,18})[:：]\s*(.+)$/);
+    if (information) {
+      return { id, kind: "information", text: line, label: information[1], value: information[2] };
+    }
+
+    if (/[:：]$/.test(line) || (line.length <= 28 && !/[.!?。]$/.test(line))) {
+      return { id, kind: "heading", text: line.replace(/[:：]$/, "") };
+    }
+
+    return { id, kind: "body", text: line };
+  });
+}
+
 export default function Home() {
   const [documentText, setDocumentText] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
@@ -164,6 +201,7 @@ export default function Home() {
   const [saveMessage, setSaveMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [storageState, setStorageState] = useState<"connecting" | "ready" | "error">("connecting");
+  const [stylePreviewOpen, setStylePreviewOpen] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -215,6 +253,12 @@ export default function Home() {
       .map(({ savedDocument }) => savedDocument);
   }, [savedDocuments, searchQuery]);
 
+  const styledBlocks = useMemo(() => createStyledBlocks(documentText), [documentText]);
+  const styleSummary = useMemo(() => ({
+    headings: styledBlocks.filter((block) => block.kind === "title" || block.kind === "heading").length,
+    highlighted: styledBlocks.filter((block) => block.kind === "notice" || block.kind === "information").length,
+  }), [styledBlocks]);
+
   const review = () => {
     setEmptyMessage("");
 
@@ -252,7 +296,19 @@ export default function Home() {
     setDocumentText("");
     setReviewState("idle");
     setEmptyMessage("");
+    setStylePreviewOpen(false);
     window.requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  const createStylePreview = () => {
+    setEmptyMessage("");
+    if (!documentText.trim()) {
+      setStylePreviewOpen(false);
+      setEmptyMessage("문서 스타일을 구성할 본문을 먼저 입력해 주세요.");
+      editorRef.current?.focus();
+      return;
+    }
+    setStylePreviewOpen(true);
   };
 
   const saveDocument = async () => {
@@ -387,8 +443,43 @@ export default function Home() {
 
           <div className="form-actions">
             <button className="primary-button" type="button" onClick={review}>본문 누락 검토하기 <span>→</span></button>
+            <button className="style-button" type="button" onClick={createStylePreview}>문서 스타일 자동 구성</button>
             <button className="secondary-button" type="button" onClick={reset}>본문 지우기</button>
           </div>
+
+          {stylePreviewOpen && (
+            <section className="style-preview-section" aria-labelledby="style-preview-title">
+              <div className="style-preview-heading">
+                <div>
+                  <span>규칙 기반 자동 서식 예시</span>
+                  <h4 id="style-preview-title">배포 문서 스타일 미리보기</h4>
+                  <p>첫 줄, 문장 길이, 안내 표현과 정보 형식을 분석해 크기·색·간격을 자동으로 구분했습니다.</p>
+                </div>
+                <button type="button" onClick={() => setStylePreviewOpen(false)}>미리보기 닫기</button>
+              </div>
+
+              <div className="style-analysis" aria-label="자동 서식 분석 결과">
+                <span>제목·소제목 {styleSummary.headings}개</span>
+                <span>강조 정보 {styleSummary.highlighted}개</span>
+                <span>본문 {styledBlocks.filter((block) => block.kind === "body" || block.kind === "bullet").length}개</span>
+              </div>
+
+              <article className="styled-document" aria-label="자동으로 스타일을 적용한 문서 미리보기">
+                {styledBlocks.map((block) => {
+                  if (block.kind === "title") return <h5 className="styled-title" key={block.id}>{block.text}</h5>;
+                  if (block.kind === "heading") return <h6 className="styled-heading" key={block.id}>{block.text}</h6>;
+                  if (block.kind === "notice") return <p className="styled-notice" key={block.id}><strong>!</strong>{block.text}</p>;
+                  if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span>•</span>{block.text}</p>;
+                  if (block.kind === "information") {
+                    return <div className="styled-information" key={block.id}><strong>{block.label}</strong><span>{block.value}</span></div>;
+                  }
+                  return <p className="styled-body" key={block.id}>{block.text}</p>;
+                })}
+              </article>
+
+              <p className="style-preview-note">원문은 변경하지 않습니다. 실제 배포 전 기관의 문서 서식 기준과 내용의 사실 여부를 최종 확인해 주세요.</p>
+            </section>
+          )}
 
           <section className="document-storage" aria-labelledby="storage-title">
             <div className="storage-heading">

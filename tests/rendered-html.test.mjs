@@ -25,6 +25,7 @@ test("server-renders the single-input document review prototype", async () => {
   assert.match(html, /<title>문서체크 \| 신청서 양식 본문 검토<\/title>/i);
   assert.match(html, /신청서 양식 전체 텍스트/);
   assert.match(html, /본문 누락 검토하기/);
+  assert.match(html, /문서 스타일 자동 구성/);
   assert.match(html, /실제 AI가 아닌 규칙 기반 예시/);
   assert.match(html, /검토 가능한 정보/);
   assert.doesNotMatch(html, /부서 피드백에서 확인할 가정과 질문/);
@@ -45,6 +46,9 @@ test("keeps one document input and removes the starter preview", async () => {
   assert.match(page, /첨부서류 정보 누락/);
   assert.match(page, /비용 정보 누락/);
   assert.match(page, /형식은 자유입니다/);
+  assert.match(page, /createStyledBlocks/);
+  assert.match(page, /배포 문서 스타일 미리보기/);
+  assert.match(page, /규칙 기반 자동 서식 예시/);
   assert.match(page, /담당부서\|담당자\|연락처/);
   assert.doesNotMatch(page, /id="formTitle"|id="audience"|id="applicationPeriod"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
