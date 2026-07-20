@@ -44,6 +44,8 @@ test("keeps one document input and removes the starter preview", async () => {
   assert.match(page, /제출처 정보 누락/);
   assert.match(page, /첨부서류 정보 누락/);
   assert.match(page, /비용 정보 누락/);
+  assert.match(page, /형식은 자유입니다/);
+  assert.match(page, /담당부서\|담당자\|연락처/);
   assert.doesNotMatch(page, /id="formTitle"|id="audience"|id="applicationPeriod"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", templateRoot)));

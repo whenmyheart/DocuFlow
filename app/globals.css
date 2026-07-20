@@ -170,6 +170,7 @@ main { min-height: 100vh; }
 .fix-guide { margin-top: 16px; padding: 13px; display: grid; gap: 7px; border-radius: 6px; background: var(--green-soft); }
 .fix-guide span { color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .fix-guide code { color: #254535; font-family: inherit; font-size: 11px; font-weight: 700; }
+.fix-guide small { color: #5e7468; font-size: 9px; line-height: 1.5; }
 .multi-rule-results { max-height: 490px; }
 .multi-rule-results .contact-issue { margin-top: 0; }
 .field input, .field textarea { width: 100%; border: 1px solid #cad4cd; border-radius: 7px; background: #fcfdfc; color: var(--ink); outline: none; transition: border .18s, box-shadow .18s, background .18s; }

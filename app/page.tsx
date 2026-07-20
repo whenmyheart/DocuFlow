@@ -28,7 +28,7 @@ const reviewRules: ReviewRule[] = [
     label: "문의처",
     title: "문의처 정보 누락",
     trigger: /(문의처|문의가|문의\s|연락해\s*주|연락\s*바랍)/,
-    information: /0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+    information: /0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}|\b1\d{2,3}\b|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:문의처|담당부서|담당자|연락처)\s*(?:[:：]|은|는)\s*(?!아래|다음|별도|추후)[가-힣A-Z0-9][^\n.!?]{1,50}/i,
     explanation: "문의 또는 연락을 안내했지만 실제 전화번호나 이메일이 기재되어 있지 않습니다.",
     fixExample: "문의처: 새롬행정센터 02-1234-5678",
   },
@@ -37,7 +37,7 @@ const reviewRules: ReviewRule[] = [
     label: "사이트",
     title: "사이트 주소 누락",
     trigger: /(사이트|홈페이지|웹\s*사이트|링크|접속)/,
-    information: /https?:\/\/\S+|www\.\S+|[a-z0-9-]+\.(?:go\.kr|or\.kr|co\.kr|kr|com|net)(?:\/\S*)?/i,
+    information: /https?:\/\/\S+|www\.\S+|[a-z0-9-]+\.(?:go\.kr|or\.kr|co\.kr|kr|com|net)(?:\/\S*)?|(?:사이트|홈페이지)\s*(?:[:：]|은|는)\s*(?!아래|다음|별도|추후)[가-힣A-Z0-9][^\n.!?]{1,40}/i,
     explanation: "사이트 또는 홈페이지를 확인하라고 안내했지만 실제 웹 주소가 기재되어 있지 않습니다.",
     fixExample: "신청 사이트: https://example.go.kr",
   },
@@ -46,7 +46,7 @@ const reviewRules: ReviewRule[] = [
     label: "신청 기간",
     title: "신청 기간 정보 누락",
     trigger: /((신청|접수).{0,12}(기간|마감|기한)|마감일|기간\s*내)/,
-    information: /20\d{2}\s*[년./-]\s*\d{1,2}|\d{1,2}\s*월\s*\d{1,2}\s*일|상시\s*(접수|신청)?/,
+    information: /20\d{2}\s*[년./-]\s*\d{1,2}|\d{1,2}\s*[월./-]\s*(?:\d{1,2}\s*일?)?|상시\s*(접수|신청)?|매월|공고일로부터\s*\d+\s*일|\d+\s*일간/,
     explanation: "신청 기간이나 마감일을 언급했지만 실제 날짜 또는 상시 접수 여부가 기재되어 있지 않습니다.",
     fixExample: "신청 기간: 2026. 8. 1. ~ 2026. 8. 31.",
   },
@@ -55,7 +55,7 @@ const reviewRules: ReviewRule[] = [
     label: "제출처",
     title: "제출처 정보 누락",
     trigger: /(아래|다음).{0,12}(접수처|제출처|주소)|(?:접수처|제출처).{0,10}(방문|제출|접수)/,
-    information: /접수처\s*[:：]|제출처\s*[:：]|주소\s*[:：]|[가-힣]+(?:센터|과|팀|부서)\s*(?:방문|접수|제출)?/,
+    information: /(?:접수처|제출처|주소)\s*(?:[:：]|은|는)\s*(?!아래|다음|별도|추후)[^\n.!?]{2,}|[가-힣]+(?:센터|과|팀|부서)\s*(?:방문|접수|제출)?|(?:온라인|이메일|우편|방문)\s*(?:제출|접수)/,
     explanation: "접수처나 제출처를 안내했지만 실제 기관명 또는 주소가 기재되어 있지 않습니다.",
     fixExample: "제출처: 새롬행정센터 주민지원과",
   },
@@ -64,7 +64,7 @@ const reviewRules: ReviewRule[] = [
     label: "첨부서류",
     title: "첨부서류 정보 누락",
     trigger: /(첨부해|첨부하여|구비서류|제출서류|서류를\s*제출)/,
-    information: /첨부서류\s*[:：]|구비서류\s*[:：]|제출서류\s*[:：]|(?:증명서|등본|사본|계획서|동의서|확인서)\s*(?:\d+\s*부)?/,
+    information: /(?:첨부서류|구비서류|제출서류)\s*(?:[:：]|은|는)\s*(?!아래|다음|별도|추후)[^\n.!?]{2,}|(?:증명서|등본|사본|계획서|동의서|확인서|신분증)\s*(?:\d+\s*부)?/,
     explanation: "서류를 첨부하거나 제출하라고 안내했지만 실제 서류명이 기재되어 있지 않습니다.",
     fixExample: "첨부서류: 주민등록등본 1부",
   },
@@ -73,7 +73,7 @@ const reviewRules: ReviewRule[] = [
     label: "비용",
     title: "비용 정보 누락",
     trigger: /(수수료|이용료|참가비|납부|입금)/,
-    information: /무료|없음|면제|\d{1,3}(?:,\d{3})*\s*원|계좌\s*[:：]|(?:은행|농협|신협)\s+\d/,
+    information: /무료|없음|면제|\d{1,3}(?:,\d{3})*\s*원|(?:일|이|삼|사|오|육|칠|팔|구|십|백|천|만)+\s*원|계좌\s*(?:[:：]|은|는)\s*[^\n.!?]{2,}|(?:은행|농협|신협)\s+\d/,
     explanation: "비용이나 납부를 안내했지만 실제 금액, 무료 여부 또는 납부 정보가 기재되어 있지 않습니다.",
     fixExample: "이용료: 무료",
   },
@@ -253,7 +253,11 @@ export default function Home() {
                     <p className="evidence-label">오류 판단 근거 문장</p>
                     <blockquote><mark>{issue.evidence}</mark></blockquote>
                     <p className="issue-explanation">{issue.explanation}</p>
-                    <div className="fix-guide"><span>수정 예시</span><code>{issue.fixExample}</code></div>
+                    <div className="fix-guide">
+                      <span>수정 예시 · 형식은 자유입니다</span>
+                      <code>{issue.fixExample}</code>
+                      <small>위 문구와 같지 않아도 실제 정보가 확인되면 기재된 것으로 인식합니다.</small>
+                    </div>
                   </article>
                 ))}
               </div>
