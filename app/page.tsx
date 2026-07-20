@@ -2,251 +2,80 @@
 
 import { useMemo, useRef, useState } from "react";
 
-type FieldKey =
-  | "formTitle"
-  | "audience"
-  | "applicationPeriod"
-  | "submissionMethod"
-  | "attachments"
-  | "formFields"
-  | "guidance";
+type ReviewState = "idle" | "issue" | "complete" | "error";
 
-type FormValues = Record<FieldKey, string>;
-type ReviewState = "idle" | "issues" | "complete" | "error";
+const sampleText = `[마을공유공간 이용 신청 안내]
 
-type Issue = {
-  id: string;
-  title: string;
-  evidence: string;
-  focusKey: FieldKey;
-  kind: "누락" | "불일치";
-};
+한빛시 주민과 관내 단체는 마을공유공간 이용을 신청할 수 있습니다.
+신청서를 작성한 뒤 새롬행정센터에 방문하여 제출해 주세요.
+문의가 있으신 분은 아래 기재되어 있는 문의처로 연락해 주세요.`;
 
-const fields: Array<{
-  key: FieldKey;
-  label: string;
-  helper: string;
-  placeholder: string;
-  multiline?: boolean;
-  wide?: boolean;
-}> = [
-  {
-    key: "formTitle",
-    label: "양식명",
-    helper: "배포할 신청서의 공식 명칭",
-    placeholder: "예: 마을공유공간 이용 신청서",
-    wide: true,
-  },
-  {
-    key: "audience",
-    label: "신청 대상·자격",
-    helper: "누가 신청할 수 있는지",
-    placeholder: "예: 한빛시 거주 주민 또는 관내 단체",
-  },
-  {
-    key: "applicationPeriod",
-    label: "신청 기간",
-    helper: "접수 시작일과 마감일",
-    placeholder: "예: 2026. 8. 1. ~ 2026. 8. 31.",
-  },
-  {
-    key: "submissionMethod",
-    label: "제출 방법·접수처",
-    helper: "방문, 이메일 등 제출 경로",
-    placeholder: "예: 새롬행정센터 방문 제출",
-  },
-  {
-    key: "attachments",
-    label: "필수 첨부서류",
-    helper: "없다면 ‘없음’으로 입력",
-    placeholder: "예: 단체 소개서 1부",
-  },
-  {
-    key: "formFields",
-    label: "신청서에 배치할 작성 항목",
-    helper: "신청자가 직접 작성할 칸을 한 줄에 하나씩 입력",
-    placeholder: "성명\n주소\n연락처\n이용 희망 일시\n이용 목적",
-    multiline: true,
-    wide: true,
-  },
-  {
-    key: "guidance",
-    label: "신청 안내문·본문",
-    helper: "양식 상단이나 하단에 함께 배포할 안내 문구",
-    placeholder: "신청 방법, 유의사항, 동의 및 서명 안내 등을 입력해 주세요.",
-    multiline: true,
-    wide: true,
-  },
-];
+const contactRequestPattern = /(문의처|문의가|문의s|연락해s*주|연락s*바랍)/;
+const phonePattern = /0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}/;
+const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
-const emptyValues: FormValues = {
-  formTitle: "",
-  audience: "",
-  applicationPeriod: "",
-  submissionMethod: "",
-  attachments: "",
-  formFields: "",
-  guidance: "",
-};
+function findContactEvidence(text: string) {
+  const sentences = text
+    .split(/(?<=[.!?。]|다\.)\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
 
-const sampleValues: FormValues = {
-  formTitle: "마을공유공간 이용 신청서",
-  audience: "한빛시 거주 주민 또는 관내 단체",
-  applicationPeriod: "2026. 8. 1. ~ 2026. 8. 31.",
-  submissionMethod: "새롬행정센터 방문 제출",
-  attachments: "단체 신청 시 단체 소개서 1부",
-  formFields: "성명\n주소\n연락처\n이용 희망 일시\n이용 목적",
-  guidance:
-    "이용 신청자는 개인정보 수집·이용에 동의해야 하며, 신청서 하단에 서명해야 합니다. 단체 신청 시 단체 소개서를 첨부해 주세요.",
-};
-
-const contentRules: Array<{
-  id: string;
-  title: string;
-  guidanceTerms: string[];
-  fieldTerms: string[];
-  focusKey: FieldKey;
-}> = [
-  {
-    id: "signature",
-    title: "서명란",
-    guidanceTerms: ["서명"],
-    fieldTerms: ["서명", "날인"],
-    focusKey: "formFields",
-  },
-  {
-    id: "privacy",
-    title: "개인정보 수집·이용 동의 항목",
-    guidanceTerms: ["개인정보", "수집·이용"],
-    fieldTerms: ["개인정보", "동의"],
-    focusKey: "formFields",
-  },
-  {
-    id: "contact",
-    title: "연락처 작성란",
-    guidanceTerms: ["연락처", "전화"],
-    fieldTerms: ["연락처", "전화", "휴대전화"],
-    focusKey: "formFields",
-  },
-];
-
-function includesAny(source: string, terms: string[]) {
-  return terms.some((term) => source.includes(term));
+  return sentences.find((sentence) => contactRequestPattern.test(sentence)) ?? "";
 }
 
-function analyzeForm(values: FormValues): Issue[] {
-  const issues: Issue[] = [];
-
-  for (const field of fields) {
-    if (!values[field.key].trim()) {
-      issues.push({
-        id: `empty-${field.key}`,
-        title: field.label,
-        evidence: `배포 전 확인이 필요한 “${field.label}” 내용이 입력되지 않았습니다.`,
-        focusKey: field.key,
-        kind: "누락",
-      });
-    }
-  }
-
-  const guidance = values.guidance.trim();
-  const formFields = values.formFields.trim();
-
-  if (guidance && formFields) {
-    for (const rule of contentRules) {
-      if (
-        includesAny(guidance, rule.guidanceTerms) &&
-        !includesAny(formFields, rule.fieldTerms)
-      ) {
-        const matchedTerm = rule.guidanceTerms.find((term) => guidance.includes(term));
-        issues.push({
-          id: `mismatch-${rule.id}`,
-          title: rule.title,
-          evidence: `안내문에는 “${matchedTerm}” 내용이 있지만 실제 작성 항목에는 해당 입력란이 없습니다.`,
-          focusKey: rule.focusKey,
-          kind: "불일치",
-        });
-      }
-    }
-  }
-
-  if (
-    values.attachments.trim() &&
-    values.attachments.trim() !== "없음" &&
-    guidance &&
-    !includesAny(guidance, ["첨부", "제출서류", "구비서류"])
-  ) {
-    issues.push({
-      id: "mismatch-attachments",
-      title: "첨부서류 안내 문구",
-      evidence: "필수 첨부서류가 설정되어 있지만 신청 안내문에는 첨부 또는 제출 안내가 없습니다.",
-      focusKey: "guidance",
-      kind: "불일치",
-    });
-  }
-
-  return issues;
+function hasContactError(text: string) {
+  const asksForContact = contactRequestPattern.test(text);
+  const hasContactInformation = phonePattern.test(text) || emailPattern.test(text);
+  return asksForContact && !hasContactInformation;
 }
 
 export default function Home() {
-  const [values, setValues] = useState<FormValues>(emptyValues);
+  const [documentText, setDocumentText] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [emptyMessage, setEmptyMessage] = useState("");
-  const fieldRefs = useRef<
-    Partial<Record<FieldKey, HTMLInputElement | HTMLTextAreaElement | null>>
-  >({});
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const issues = useMemo(
-    () => (reviewState === "issues" || reviewState === "complete" ? analyzeForm(values) : []),
-    [reviewState, values],
-  );
+  const evidence = useMemo(() => findContactEvidence(documentText), [documentText]);
 
   const review = () => {
     setEmptyMessage("");
 
-    if (Object.values(values).every((value) => !value.trim())) {
+    if (!documentText.trim()) {
       setReviewState("idle");
-      setEmptyMessage("검토할 양식 내용을 먼저 입력해 주세요. 가상 샘플로 흐름을 확인할 수도 있습니다.");
-      fieldRefs.current.formTitle?.focus();
+      setEmptyMessage("검토할 신청서 양식의 본문을 먼저 입력해 주세요.");
+      editorRef.current?.focus();
       return;
     }
 
     try {
-      setReviewState(analyzeForm(values).length > 0 ? "issues" : "complete");
+      setReviewState(hasContactError(documentText) ? "issue" : "complete");
     } catch {
       setReviewState("error");
     }
   };
 
-  const updateValue = (key: FieldKey, value: string) => {
-    const next = { ...values, [key]: value };
-    setValues(next);
+  const updateText = (value: string) => {
+    setDocumentText(value);
     setEmptyMessage("");
 
-    if (reviewState === "issues" || reviewState === "complete") {
-      setReviewState(analyzeForm(next).length > 0 ? "issues" : "complete");
+    if (reviewState === "issue" || reviewState === "complete") {
+      setReviewState(value.trim() && hasContactError(value) ? "issue" : value.trim() ? "complete" : "idle");
     }
   };
 
   const loadSample = () => {
-    setValues(sampleValues);
+    setDocumentText(sampleText);
     setReviewState("idle");
     setEmptyMessage("");
+    window.requestAnimationFrame(() => editorRef.current?.focus());
   };
 
   const reset = () => {
-    setValues(emptyValues);
+    setDocumentText("");
     setReviewState("idle");
     setEmptyMessage("");
-    window.requestAnimationFrame(() => fieldRefs.current.formTitle?.focus());
+    window.requestAnimationFrame(() => editorRef.current?.focus());
   };
-
-  const focusIssue = (issue: Issue) => {
-    fieldRefs.current[issue.focusKey]?.focus();
-  };
-
-  const reviewed = reviewState === "issues" || reviewState === "complete";
-  const issueKeys = new Set(issues.map((issue) => issue.focusKey));
 
   return (
     <main>
@@ -261,10 +90,10 @@ export default function Home() {
 
       <section className="intro" aria-labelledby="intro-title">
         <div>
-          <p className="step-label">신청서 양식을 만드는 담당자를 위해</p>
-          <h2 id="intro-title">양식을 올리기 전,<br />빠진 항목부터 확인하세요.</h2>
+          <p className="step-label">본문 하나만 붙여 넣으면</p>
+          <h2 id="intro-title">언급했지만 빠뜨린 정보,<br />배포 전에 확인하세요.</h2>
           <p>
-            담당자가 설계한 양식의 구성과 안내문을 대조해 필수 정보 누락과 서로 맞지 않는 내용을 배포 전에 찾아냅니다.
+            담당자가 만든 신청서 양식의 전체 본문을 입력하면, 안내한 내용과 실제로 적힌 정보가 일치하는지 확인합니다.
           </p>
         </div>
         <div className="trust-note">
@@ -277,63 +106,45 @@ export default function Home() {
       </section>
 
       <div className="scope-strip" aria-label="현재 작업 흐름">
-        <span>01 양식 구성 입력</span><b>→</b><span>02 누락·불일치 검토</span><b>→</b><span>03 수정 후 배포 준비</span>
+        <span>01 본문 붙여 넣기</span><b>→</b><span>02 누락 검토</span><b>→</b><span>03 수정 후 다시 검토</span>
       </div>
 
-      <section className="workspace" aria-label="신청서 양식 설계 및 검토">
+      <section className="workspace single-editor-workspace" aria-label="신청서 양식 본문 검토">
         <div className="form-panel">
           <div className="panel-heading">
             <div>
               <span className="panel-number">01</span>
               <div>
-                <h3>배포할 양식 내용 입력</h3>
-                <p>신청자 정보가 아니라, 담당자가 만들 신청서의 구성과 안내 문구를 입력합니다.</p>
+                <h3>배포할 양식 본문</h3>
+                <p>신청서 양식과 안내 문구를 포함한 전체 텍스트를 한 번에 입력해 주세요.</p>
               </div>
             </div>
-            <button className="text-button" type="button" onClick={loadSample}>가상 양식 불러오기</button>
+            <button className="text-button" type="button" onClick={loadSample}>오류 예시 불러오기</button>
           </div>
 
-          <div className="form-grid">
-            {fields.map((field) => {
-              const hasIssue = reviewed && issueKeys.has(field.key);
-              const commonProps = {
-                id: field.key,
-                value: values[field.key],
-                placeholder: field.placeholder,
-                onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                  updateValue(field.key, event.target.value),
-                "aria-invalid": hasIssue,
-                maxLength: field.multiline ? 1200 : 180,
-              };
-
-              return (
-                <div className={`field ${field.wide ? "field-wide" : ""}`} key={field.key}>
-                  <label htmlFor={field.key}>{field.label}<span>검토 대상</span></label>
-                  <p className="field-helper">{field.helper}</p>
-                  {field.multiline ? (
-                    <textarea
-                      {...commonProps}
-                      rows={field.key === "guidance" ? 6 : 5}
-                      ref={(node) => { fieldRefs.current[field.key] = node; }}
-                    />
-                  ) : (
-                    <input
-                      {...commonProps}
-                      type="text"
-                      ref={(node) => { fieldRefs.current[field.key] = node; }}
-                    />
-                  )}
-                  {hasIssue && <p className="field-error">검토 결과에서 보완할 내용을 확인해 주세요.</p>}
-                </div>
-              );
-            })}
+          <div className="document-editor">
+            <label htmlFor="documentText">신청서 양식 전체 텍스트</label>
+            <textarea
+              id="documentText"
+              ref={editorRef}
+              value={documentText}
+              onChange={(event) => updateText(event.target.value)}
+              placeholder="여기에 배포할 신청서 양식의 본문을 붙여 넣어 주세요."
+              aria-invalid={reviewState === "issue"}
+              aria-describedby="review-rule"
+              maxLength={10000}
+            />
+            <div className="editor-meta">
+              <p id="review-rule"><strong>현재 검토 기준</strong> 문의·연락 안내가 있다면 전화번호 또는 이메일이 본문에 있어야 합니다.</p>
+              <span>{documentText.length.toLocaleString()} / 10,000자</span>
+            </div>
           </div>
 
           {emptyMessage && <p className="form-message" role="alert">{emptyMessage}</p>}
 
           <div className="form-actions">
-            <button className="primary-button" type="button" onClick={review}>양식 누락 검토하기 <span>→</span></button>
-            <button className="secondary-button" type="button" onClick={reset}>새 양식 작성</button>
+            <button className="primary-button" type="button" onClick={review}>본문 누락 검토하기 <span>→</span></button>
+            <button className="secondary-button" type="button" onClick={reset}>본문 지우기</button>
           </div>
         </div>
 
@@ -343,7 +154,7 @@ export default function Home() {
               <span className="panel-number">02</span>
               <div>
                 <h3>배포 전 검토 결과</h3>
-                <p>양식 구성과 안내문의 누락·불일치를 근거와 함께 표시합니다.</p>
+                <p>누락된 정보와 판단에 사용한 본문 문장을 함께 보여줍니다.</p>
               </div>
             </div>
           </div>
@@ -353,33 +164,35 @@ export default function Home() {
               <div className="document-preview" aria-hidden="true">
                 <span></span><span></span><span></span><b>✓</b>
               </div>
-              <h4>아직 양식을 검토하지 않았습니다</h4>
-              <p>왼쪽에 배포할 양식의 내용을 입력한 뒤<br />‘양식 누락 검토하기’를 눌러주세요.</p>
+              <h4>아직 본문을 검토하지 않았습니다</h4>
+              <p>왼쪽에 양식 전체 텍스트를 입력한 뒤<br />‘본문 누락 검토하기’를 눌러주세요.</p>
             </div>
           )}
 
-          {reviewState === "issues" && (
-            <div className="review-content">
+          {reviewState === "issue" && (
+            <div className="review-content single-issue-result">
               <div className="result-summary warning">
                 <span className="summary-icon" aria-hidden="true">!</span>
-                <div><strong>보완 필요 {issues.length}건</strong><p>배포하기 전에 아래 내용을 양식에 반영해 주세요.</p></div>
+                <div><strong>오류 1건</strong><p>배포 전에 문의처 정보를 추가해 주세요.</p></div>
               </div>
-              <div className="result-list">
-                {issues.map((issue, index) => (
-                  <article className="issue-card" key={issue.id}>
-                    <div className="issue-topline">
-                      <span>{String(index + 1).padStart(2, "0")}</span>
-                      <strong>{issue.title}</strong>
-                      <b>{issue.kind}</b>
-                    </div>
-                    <p className="evidence-label">판단 근거</p>
-                    <p>{issue.evidence}</p>
-                    <button className="issue-fix" type="button" onClick={() => focusIssue(issue)}>해당 내용 수정하기</button>
-                  </article>
-                ))}
-              </div>
-              <button className="next-button" type="button" onClick={() => issues[0] && focusIssue(issues[0])}>
-                첫 번째 보완 항목 수정하기 <span>→</span>
+
+              <article className="issue-card contact-issue">
+                <div className="issue-topline">
+                  <span>01</span><strong>문의처 정보 누락</strong><b>오류</b>
+                </div>
+                <p className="evidence-label">오류 판단 근거 문장</p>
+                <blockquote><mark>{evidence}</mark></blockquote>
+                <p className="issue-explanation">
+                  본문에서 문의처로 연락하라고 안내했지만 실제 전화번호나 이메일이 기재되어 있지 않습니다.
+                </p>
+                <div className="fix-guide">
+                  <span>수정 예시</span>
+                  <code>문의처: 새롬행정센터 02-1234-5678</code>
+                </div>
+              </article>
+
+              <button className="next-button" type="button" onClick={() => editorRef.current?.focus()}>
+                본문에 문의처 추가하기 <span>→</span>
               </button>
             </div>
           )}
@@ -389,7 +202,7 @@ export default function Home() {
               <div className="complete-mark" aria-hidden="true">✓</div>
               <p className="result-kicker">배포 전 검토 완료</p>
               <h4>현재 기준에서 발견된<br />누락이 없습니다.</h4>
-              <p>양식 구성과 안내문의 필수 요소가 서로 일치합니다. 배포 전 문구와 일정의 사실 여부를 최종 확인해 주세요.</p>
+              <p>문의 안내와 문의처 정보가 함께 기재되어 있습니다. 배포 전 문구와 정보의 사실 여부를 최종 확인해 주세요.</p>
               <button className="next-button" type="button" onClick={review}>수정 내용 다시 검토하기 <span>↻</span></button>
             </div>
           )}
@@ -398,7 +211,7 @@ export default function Home() {
             <div className="error-result" role="alert">
               <span aria-hidden="true">!</span>
               <h4>검토 결과를 만들지 못했습니다</h4>
-              <p>작성 중인 양식은 유지되었습니다. 잠시 후 다시 검토해 주세요.</p>
+              <p>입력한 본문은 유지되었습니다. 잠시 후 다시 검토해 주세요.</p>
               <button className="next-button" type="button" onClick={review}>다시 검토하기</button>
             </div>
           )}
@@ -408,9 +221,9 @@ export default function Home() {
       <details className="feedback-note">
         <summary>부서 피드백에서 확인할 가정과 질문</summary>
         <div className="feedback-grid">
-          <div><span>가정</span><p>양식 구성과 안내문을 나누어 입력하면 담당자가 놓친 누락과 불일치를 더 정확히 찾을 수 있다.</p></div>
-          <div><span>질문 1</span><p>자주 반복해서 사용하는 안내 문구와 실제로 자주 누락되는 양식 요소는 무엇인가?</p></div>
-          <div><span>질문 2</span><p>오류나 누락을 발견하지 못한 채 신청서 양식을 배포한 경험이 있는가?</p></div>
+          <div><span>가정</span><p>양식 전체 본문을 한 번에 입력하는 방식이 세분화된 입력보다 담당자가 사용하기 쉽다.</p></div>
+          <div><span>질문 1</span><p>본문 한 곳만 입력하는 현재 방식으로 검토를 시작하기 쉬운가?</p></div>
+          <div><span>질문 2</span><p>누락 근거 문장과 수정 예시가 실제 양식 수정에 도움이 되는가?</p></div>
         </div>
       </details>
 

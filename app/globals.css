@@ -134,6 +134,38 @@ main { min-height: 100vh; }
 .field label { margin-bottom: 8px; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 750; }
 .field label span { padding: 2px 5px; border-radius: 3px; background: var(--green-soft); color: var(--green); font-size: 9px; }
 .field-helper { min-height: 16px; margin: -3px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+.document-editor label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 800; }
+.document-editor textarea {
+  width: 100%;
+  min-height: 410px;
+  padding: 22px;
+  border: 1px solid #cad4cd;
+  border-radius: 9px;
+  background: #fcfdfc;
+  color: var(--ink);
+  line-height: 1.85;
+  resize: vertical;
+  outline: none;
+  transition: border .18s, box-shadow .18s, background .18s;
+}
+.document-editor textarea:focus { border-color: var(--green); background: white; box-shadow: 0 0 0 3px rgba(25,95,59,.12); }
+.document-editor textarea[aria-invalid="true"] { border-color: var(--danger); background: #fffafa; }
+.document-editor textarea::placeholder { color: #9aa49e; }
+.editor-meta { margin-top: 10px; display: flex; justify-content: space-between; gap: 18px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.editor-meta p { margin: 0; }
+.editor-meta strong { color: var(--green); }
+.editor-meta > span { flex: 0 0 auto; }
+
+.single-editor-workspace .form-panel, .single-editor-workspace .result-panel { min-height: 720px; }
+.single-issue-result { padding-top: 2px; }
+.contact-issue { margin-top: 18px; padding: 20px; }
+.contact-issue blockquote { margin: 10px 0 14px; padding: 14px; border-left: 3px solid #d38a20; background: #fffaf0; color: #4c4335; font-size: 13px; line-height: 1.7; }
+.contact-issue mark { background: #ffe7ad; color: inherit; }
+.issue-explanation { margin: 0 !important; color: #4c5852; font-size: 12px; line-height: 1.65; }
+.fix-guide { margin-top: 16px; padding: 13px; display: grid; gap: 7px; border-radius: 6px; background: var(--green-soft); }
+.fix-guide span { color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.fix-guide code { color: #254535; font-family: inherit; font-size: 11px; font-weight: 700; }
 .field input, .field textarea { width: 100%; border: 1px solid #cad4cd; border-radius: 7px; background: #fcfdfc; color: var(--ink); outline: none; transition: border .18s, box-shadow .18s, background .18s; }
 .field input { height: 47px; padding: 0 14px; }
 .field textarea { min-height: 92px; padding: 13px 14px; resize: vertical; line-height: 1.55; }
@@ -220,6 +252,8 @@ footer { padding: 0 20px 32px; color: #87918b; text-align: center; font-size: 10
   .form-actions { align-items: stretch; flex-direction: column; }
   .primary-button, .secondary-button { width: 100%; }
   .secondary-button { min-height: 42px; }
+  .document-editor textarea { min-height: 360px; padding: 16px; }
+  .editor-meta { flex-direction: column; gap: 5px; }
   .empty-result, .complete-result, .error-result { min-height: 350px; }
 }
 
