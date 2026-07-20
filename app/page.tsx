@@ -4,29 +4,96 @@ import { useMemo, useRef, useState } from "react";
 
 type ReviewState = "idle" | "issue" | "complete" | "error";
 
+type ReviewRule = {
+  id: string;
+  label: string;
+  title: string;
+  trigger: RegExp;
+  information: RegExp;
+  explanation: string;
+  fixExample: string;
+};
+
+type ReviewIssue = ReviewRule & { evidence: string };
+
 const sampleText = `[마을공유공간 이용 신청 안내]
 
 한빛시 주민과 관내 단체는 마을공유공간 이용을 신청할 수 있습니다.
-신청서를 작성한 뒤 새롬행정센터에 방문하여 제출해 주세요.
+신청 기간과 자세한 신청 방법은 아래 사이트에서 확인해 주세요.
 문의가 있으신 분은 아래 기재되어 있는 문의처로 연락해 주세요.`;
 
-const contactRequestPattern = /(문의처|문의가|문의s|연락해s*주|연락s*바랍)/;
-const phonePattern = /0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}/;
-const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const reviewRules: ReviewRule[] = [
+  {
+    id: "contact",
+    label: "문의처",
+    title: "문의처 정보 누락",
+    trigger: /(문의처|문의가|문의\s|연락해\s*주|연락\s*바랍)/,
+    information: /0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+    explanation: "문의 또는 연락을 안내했지만 실제 전화번호나 이메일이 기재되어 있지 않습니다.",
+    fixExample: "문의처: 새롬행정센터 02-1234-5678",
+  },
+  {
+    id: "website",
+    label: "사이트",
+    title: "사이트 주소 누락",
+    trigger: /(사이트|홈페이지|웹\s*사이트|링크|접속)/,
+    information: /https?:\/\/\S+|www\.\S+|[a-z0-9-]+\.(?:go\.kr|or\.kr|co\.kr|kr|com|net)(?:\/\S*)?/i,
+    explanation: "사이트 또는 홈페이지를 확인하라고 안내했지만 실제 웹 주소가 기재되어 있지 않습니다.",
+    fixExample: "신청 사이트: https://example.go.kr",
+  },
+  {
+    id: "period",
+    label: "신청 기간",
+    title: "신청 기간 정보 누락",
+    trigger: /((신청|접수).{0,12}(기간|마감|기한)|마감일|기간\s*내)/,
+    information: /20\d{2}\s*[년./-]\s*\d{1,2}|\d{1,2}\s*월\s*\d{1,2}\s*일|상시\s*(접수|신청)?/,
+    explanation: "신청 기간이나 마감일을 언급했지만 실제 날짜 또는 상시 접수 여부가 기재되어 있지 않습니다.",
+    fixExample: "신청 기간: 2026. 8. 1. ~ 2026. 8. 31.",
+  },
+  {
+    id: "submission",
+    label: "제출처",
+    title: "제출처 정보 누락",
+    trigger: /(아래|다음).{0,12}(접수처|제출처|주소)|(?:접수처|제출처).{0,10}(방문|제출|접수)/,
+    information: /접수처\s*[:：]|제출처\s*[:：]|주소\s*[:：]|[가-힣]+(?:센터|과|팀|부서)\s*(?:방문|접수|제출)?/,
+    explanation: "접수처나 제출처를 안내했지만 실제 기관명 또는 주소가 기재되어 있지 않습니다.",
+    fixExample: "제출처: 새롬행정센터 주민지원과",
+  },
+  {
+    id: "attachment",
+    label: "첨부서류",
+    title: "첨부서류 정보 누락",
+    trigger: /(첨부해|첨부하여|구비서류|제출서류|서류를\s*제출)/,
+    information: /첨부서류\s*[:：]|구비서류\s*[:：]|제출서류\s*[:：]|(?:증명서|등본|사본|계획서|동의서|확인서)\s*(?:\d+\s*부)?/,
+    explanation: "서류를 첨부하거나 제출하라고 안내했지만 실제 서류명이 기재되어 있지 않습니다.",
+    fixExample: "첨부서류: 주민등록등본 1부",
+  },
+  {
+    id: "fee",
+    label: "비용",
+    title: "비용 정보 누락",
+    trigger: /(수수료|이용료|참가비|납부|입금)/,
+    information: /무료|없음|면제|\d{1,3}(?:,\d{3})*\s*원|계좌\s*[:：]|(?:은행|농협|신협)\s+\d/,
+    explanation: "비용이나 납부를 안내했지만 실제 금액, 무료 여부 또는 납부 정보가 기재되어 있지 않습니다.",
+    fixExample: "이용료: 무료",
+  },
+];
 
-function findContactEvidence(text: string) {
-  const sentences = text
+function splitSentences(text: string) {
+  return text
     .split(/(?<=[.!?。]|다\.)\s+|\n+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
-
-  return sentences.find((sentence) => contactRequestPattern.test(sentence)) ?? "";
 }
 
-function hasContactError(text: string) {
-  const asksForContact = contactRequestPattern.test(text);
-  const hasContactInformation = phonePattern.test(text) || emailPattern.test(text);
-  return asksForContact && !hasContactInformation;
+function analyzeDocument(text: string): ReviewIssue[] {
+  const sentences = splitSentences(text);
+
+  return reviewRules.flatMap((rule) => {
+    if (!rule.trigger.test(text) || rule.information.test(text)) return [];
+    const evidence = sentences.find((sentence) => rule.trigger.test(sentence)) ?? text.trim();
+    return [{ ...rule, evidence }];
+  });
 }
 
 export default function Home() {
@@ -35,7 +102,10 @@ export default function Home() {
   const [emptyMessage, setEmptyMessage] = useState("");
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const evidence = useMemo(() => findContactEvidence(documentText), [documentText]);
+  const issues = useMemo(
+    () => (reviewState === "issue" || reviewState === "complete" ? analyzeDocument(documentText) : []),
+    [documentText, reviewState],
+  );
 
   const review = () => {
     setEmptyMessage("");
@@ -48,7 +118,7 @@ export default function Home() {
     }
 
     try {
-      setReviewState(hasContactError(documentText) ? "issue" : "complete");
+      setReviewState(analyzeDocument(documentText).length > 0 ? "issue" : "complete");
     } catch {
       setReviewState("error");
     }
@@ -59,7 +129,7 @@ export default function Home() {
     setEmptyMessage("");
 
     if (reviewState === "issue" || reviewState === "complete") {
-      setReviewState(value.trim() && hasContactError(value) ? "issue" : value.trim() ? "complete" : "idle");
+      setReviewState(value.trim() && analyzeDocument(value).length > 0 ? "issue" : value.trim() ? "complete" : "idle");
     }
   };
 
@@ -92,16 +162,11 @@ export default function Home() {
         <div>
           <p className="step-label">본문 하나만 붙여 넣으면</p>
           <h2 id="intro-title">언급했지만 빠뜨린 정보,<br />배포 전에 확인하세요.</h2>
-          <p>
-            담당자가 만든 신청서 양식의 전체 본문을 입력하면, 안내한 내용과 실제로 적힌 정보가 일치하는지 확인합니다.
-          </p>
+          <p>담당자가 만든 신청서 양식의 전체 본문을 입력하면, 안내한 내용과 실제로 적힌 정보가 일치하는지 확인합니다.</p>
         </div>
         <div className="trust-note">
           <span aria-hidden="true">i</span>
-          <p>
-            <strong>가상 양식으로 검토해 주세요</strong>
-            실제 개인정보는 입력하지 마세요. 현재 검토 결과는 실제 AI가 아닌 규칙 기반 예시입니다.
-          </p>
+          <p><strong>가상 양식으로 검토해 주세요</strong>실제 개인정보는 입력하지 마세요. 현재 검토 결과는 실제 AI가 아닌 규칙 기반 예시입니다.</p>
         </div>
       </section>
 
@@ -134,8 +199,13 @@ export default function Home() {
               aria-describedby="review-rule"
               maxLength={10000}
             />
-            <div className="editor-meta">
-              <p id="review-rule"><strong>현재 검토 기준</strong> 문의·연락 안내가 있다면 전화번호 또는 이메일이 본문에 있어야 합니다.</p>
+            <div className="editor-meta expanded-criteria">
+              <div id="review-rule">
+                <p><strong>검토 항목</strong> 본문에서 안내한 항목에 실제 정보가 함께 기재되어 있는지 확인합니다.</p>
+                <div className="review-tags" aria-label="검토 가능한 정보">
+                  {reviewRules.map((rule) => <span key={rule.id}>{rule.label}</span>)}
+                </div>
+              </div>
               <span>{documentText.length.toLocaleString()} / 10,000자</span>
             </div>
           </div>
@@ -161,38 +231,35 @@ export default function Home() {
 
           {reviewState === "idle" && (
             <div className="empty-result">
-              <div className="document-preview" aria-hidden="true">
-                <span></span><span></span><span></span><b>✓</b>
-              </div>
+              <div className="document-preview" aria-hidden="true"><span></span><span></span><span></span><b>✓</b></div>
               <h4>아직 본문을 검토하지 않았습니다</h4>
               <p>왼쪽에 양식 전체 텍스트를 입력한 뒤<br />‘본문 누락 검토하기’를 눌러주세요.</p>
             </div>
           )}
 
           {reviewState === "issue" && (
-            <div className="review-content single-issue-result">
+            <div className="review-content">
               <div className="result-summary warning">
                 <span className="summary-icon" aria-hidden="true">!</span>
-                <div><strong>오류 1건</strong><p>배포 전에 문의처 정보를 추가해 주세요.</p></div>
+                <div><strong>오류 {issues.length}건</strong><p>안내했지만 기재하지 않은 정보를 추가해 주세요.</p></div>
               </div>
 
-              <article className="issue-card contact-issue">
-                <div className="issue-topline">
-                  <span>01</span><strong>문의처 정보 누락</strong><b>오류</b>
-                </div>
-                <p className="evidence-label">오류 판단 근거 문장</p>
-                <blockquote><mark>{evidence}</mark></blockquote>
-                <p className="issue-explanation">
-                  본문에서 문의처로 연락하라고 안내했지만 실제 전화번호나 이메일이 기재되어 있지 않습니다.
-                </p>
-                <div className="fix-guide">
-                  <span>수정 예시</span>
-                  <code>문의처: 새롬행정센터 02-1234-5678</code>
-                </div>
-              </article>
+              <div className="result-list multi-rule-results">
+                {issues.map((issue, index) => (
+                  <article className="issue-card contact-issue" key={issue.id}>
+                    <div className="issue-topline">
+                      <span>{String(index + 1).padStart(2, "0")}</span><strong>{issue.title}</strong><b>오류</b>
+                    </div>
+                    <p className="evidence-label">오류 판단 근거 문장</p>
+                    <blockquote><mark>{issue.evidence}</mark></blockquote>
+                    <p className="issue-explanation">{issue.explanation}</p>
+                    <div className="fix-guide"><span>수정 예시</span><code>{issue.fixExample}</code></div>
+                  </article>
+                ))}
+              </div>
 
               <button className="next-button" type="button" onClick={() => editorRef.current?.focus()}>
-                본문에 문의처 추가하기 <span>→</span>
+                본문에 누락 정보 추가하기 <span>→</span>
               </button>
             </div>
           )}
@@ -202,7 +269,7 @@ export default function Home() {
               <div className="complete-mark" aria-hidden="true">✓</div>
               <p className="result-kicker">배포 전 검토 완료</p>
               <h4>현재 기준에서 발견된<br />누락이 없습니다.</h4>
-              <p>문의 안내와 문의처 정보가 함께 기재되어 있습니다. 배포 전 문구와 정보의 사실 여부를 최종 확인해 주세요.</p>
+              <p>본문에서 안내한 항목과 실제 정보가 함께 기재되어 있습니다. 배포 전 내용의 사실 여부를 최종 확인해 주세요.</p>
               <button className="next-button" type="button" onClick={review}>수정 내용 다시 검토하기 <span>↻</span></button>
             </div>
           )}
@@ -217,15 +284,6 @@ export default function Home() {
           )}
         </aside>
       </section>
-
-      <details className="feedback-note">
-        <summary>부서 피드백에서 확인할 가정과 질문</summary>
-        <div className="feedback-grid">
-          <div><span>가정</span><p>양식 전체 본문을 한 번에 입력하는 방식이 세분화된 입력보다 담당자가 사용하기 쉽다.</p></div>
-          <div><span>질문 1</span><p>본문 한 곳만 입력하는 현재 방식으로 검토를 시작하기 쉬운가?</p></div>
-          <div><span>질문 2</span><p>누락 근거 문장과 수정 예시가 실제 양식 수정에 도움이 되는가?</p></div>
-        </div>
-      </details>
 
       <footer>문서체크 1-Day Prototype · 입력한 양식 내용은 브라우저를 벗어나 전송되지 않습니다.</footer>
     </main>

@@ -156,6 +156,10 @@ main { min-height: 100vh; }
 .editor-meta p { margin: 0; }
 .editor-meta strong { color: var(--green); }
 .editor-meta > span { flex: 0 0 auto; }
+.expanded-criteria { align-items: flex-start; }
+.expanded-criteria > div { min-width: 0; }
+.review-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.review-tags span { padding: 4px 7px; border: 1px solid #c7d6cd; border-radius: 999px; background: #f4f8f5; color: var(--green); font-size: 9px; font-weight: 800; }
 
 .single-editor-workspace .form-panel, .single-editor-workspace .result-panel { min-height: 720px; }
 .single-issue-result { padding-top: 2px; }
@@ -166,6 +170,8 @@ main { min-height: 100vh; }
 .fix-guide { margin-top: 16px; padding: 13px; display: grid; gap: 7px; border-radius: 6px; background: var(--green-soft); }
 .fix-guide span { color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .fix-guide code { color: #254535; font-family: inherit; font-size: 11px; font-weight: 700; }
+.multi-rule-results { max-height: 490px; }
+.multi-rule-results .contact-issue { margin-top: 0; }
 .field input, .field textarea { width: 100%; border: 1px solid #cad4cd; border-radius: 7px; background: #fcfdfc; color: var(--ink); outline: none; transition: border .18s, box-shadow .18s, background .18s; }
 .field input { height: 47px; padding: 0 14px; }
 .field textarea { min-height: 92px; padding: 13px 14px; resize: vertical; line-height: 1.55; }
