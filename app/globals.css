@@ -135,7 +135,12 @@ main { min-height: 100vh; }
 .field label span { padding: 2px 5px; border-radius: 3px; background: var(--green-soft); color: var(--green); font-size: 9px; }
 .field-helper { min-height: 16px; margin: -3px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.45; }
 
-.document-editor label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 800; }
+.document-editor label, .editor-label { display: block; font-size: 13px; font-weight: 800; }
+.editor-label-row { min-height: 31px; margin-bottom: 9px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.format-history { display: flex; gap: 5px; }
+.format-history button { min-height: 30px; padding: 0 9px; border: 1px solid #bfd0c5; border-radius: 5px; background: white; color: var(--green); font-size: 9px; font-weight: 800; }
+.format-history button:hover:not(:disabled) { background: var(--green-soft); border-color: #8fab99; }
+.format-history button:disabled { cursor: not-allowed; color: #a7b0aa; border-color: #e0e5e1; background: #f5f6f5; }
 .document-editor textarea {
   width: 100%;
   min-height: 410px;
@@ -200,7 +205,10 @@ main { min-height: 100vh; }
 .style-preview-heading > div > span { color: var(--green); font-size: 9px; font-weight: 850; letter-spacing: .1em; }
 .style-preview-heading h4 { margin: 5px 0; font-size: 17px; letter-spacing: -.025em; }
 .style-preview-heading p { max-width: 520px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
-.style-preview-heading button { flex: 0 0 auto; padding: 7px 0; border: 0; border-bottom: 1px solid #8ea99a; background: transparent; color: var(--green); font-size: 10px; font-weight: 800; }
+.style-preview-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+.style-preview-actions button { min-height: 34px; padding: 0 10px; border: 0; border-bottom: 1px solid #8ea99a; background: transparent; color: var(--green); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.style-preview-actions .apply-style-button { padding-inline: 12px; border: 1px solid var(--green); border-radius: 5px; background: var(--green); color: white; }
+.style-preview-actions .apply-style-button:hover { background: var(--green-dark); }
 .style-analysis { margin: 16px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .style-analysis span { padding: 5px 8px; border: 1px solid #cadbd0; border-radius: 999px; background: white; color: #476254; font-size: 9px; font-weight: 750; }
 .styled-document { max-height: 500px; padding: clamp(22px, 4vw, 42px); overflow-y: auto; border: 1px solid #d7ded9; border-radius: 7px; background: white; box-shadow: 0 8px 24px rgba(24, 55, 38, .07); }
@@ -214,6 +222,8 @@ main { min-height: 100vh; }
 .styled-information { margin: 8px 0; display: grid; grid-template-columns: minmax(80px, 120px) 1fr; border: 1px solid #d7e3db; border-radius: 6px; overflow: hidden; font-size: 12px; line-height: 1.6; }
 .styled-information strong { padding: 10px 12px; background: var(--green-soft); color: var(--green-dark); }
 .styled-information span { min-width: 0; padding: 10px 12px; color: #35433b; overflow-wrap: anywhere; }
+.applied-style-document { min-height: 410px; max-height: 560px; border-color: #8fb3a0; box-shadow: inset 0 0 0 3px rgba(25,95,59,.07); }
+.format-applied-message { margin: 9px 0 0; color: var(--green); font-size: 10px; font-weight: 700; line-height: 1.5; }
 .style-preview-note { margin: 12px 0 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
 
 .document-storage { margin-top: 24px; padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: #f8faf8; }
@@ -312,8 +322,13 @@ footer { padding: 0 20px 32px; color: #87918b; text-align: center; font-size: 10
   .secondary-button { min-height: 42px; }
   .style-preview-section { padding: 15px; }
   .style-preview-heading { flex-direction: column; gap: 8px; }
+  .style-preview-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .style-preview-actions button { width: 100%; }
   .styled-document { padding: 22px 17px; }
   .styled-information { grid-template-columns: 1fr; }
+  .editor-label-row { align-items: flex-start; flex-direction: column; }
+  .format-history { width: 100%; }
+  .format-history button { flex: 1; }
   .document-editor textarea { min-height: 360px; padding: 16px; }
   .storage-heading { align-items: flex-start; }
   .saved-item { align-items: flex-start; }

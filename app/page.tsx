@@ -193,6 +193,23 @@ function createStyledBlocks(text: string): StyledBlock[] {
   });
 }
 
+function StyledDocument({ blocks, className, label }: { blocks: StyledBlock[]; className: string; label: string }) {
+  return (
+    <article className={className} aria-label={label}>
+      {blocks.map((block) => {
+        if (block.kind === "title") return <h5 className="styled-title" key={block.id}>{block.text}</h5>;
+        if (block.kind === "heading") return <h6 className="styled-heading" key={block.id}>{block.text}</h6>;
+        if (block.kind === "notice") return <p className="styled-notice" key={block.id}><strong>!</strong>{block.text}</p>;
+        if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span>•</span>{block.text}</p>;
+        if (block.kind === "information") {
+          return <div className="styled-information" key={block.id}><strong>{block.label}</strong><span>{block.value}</span></div>;
+        }
+        return <p className="styled-body" key={block.id}>{block.text}</p>;
+      })}
+    </article>
+  );
+}
+
 export default function Home() {
   const [documentText, setDocumentText] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
@@ -202,6 +219,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [storageState, setStorageState] = useState<"connecting" | "ready" | "error">("connecting");
   const [stylePreviewOpen, setStylePreviewOpen] = useState(false);
+  const [formatHistory, setFormatHistory] = useState([false]);
+  const [formatHistoryIndex, setFormatHistoryIndex] = useState(0);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -258,6 +277,14 @@ export default function Home() {
     headings: styledBlocks.filter((block) => block.kind === "title" || block.kind === "heading").length,
     highlighted: styledBlocks.filter((block) => block.kind === "notice" || block.kind === "information").length,
   }), [styledBlocks]);
+  const formatApplied = formatHistory[formatHistoryIndex] ?? false;
+  const canUndoFormat = formatHistoryIndex > 0;
+  const canRedoFormat = formatHistoryIndex < formatHistory.length - 1;
+
+  const resetFormatHistory = () => {
+    setFormatHistory([false]);
+    setFormatHistoryIndex(0);
+  };
 
   const review = () => {
     setEmptyMessage("");
@@ -279,6 +306,7 @@ export default function Home() {
   const updateText = (value: string) => {
     setDocumentText(value);
     setEmptyMessage("");
+    resetFormatHistory();
 
     if (reviewState === "issue" || reviewState === "complete") {
       setReviewState(value.trim() && analyzeDocument(value).length > 0 ? "issue" : value.trim() ? "complete" : "idle");
@@ -289,6 +317,8 @@ export default function Home() {
     setDocumentText(sampleText);
     setReviewState("idle");
     setEmptyMessage("");
+    setStylePreviewOpen(false);
+    resetFormatHistory();
     window.requestAnimationFrame(() => editorRef.current?.focus());
   };
 
@@ -297,6 +327,7 @@ export default function Home() {
     setReviewState("idle");
     setEmptyMessage("");
     setStylePreviewOpen(false);
+    resetFormatHistory();
     window.requestAnimationFrame(() => editorRef.current?.focus());
   };
 
@@ -310,6 +341,20 @@ export default function Home() {
     }
     setStylePreviewOpen(true);
   };
+
+  const applyStyleToDocument = () => {
+    if (!formatApplied) {
+      setFormatHistory((history) => {
+        const nextHistory = [...history.slice(0, formatHistoryIndex + 1), true];
+        setFormatHistoryIndex(nextHistory.length - 1);
+        return nextHistory;
+      });
+    }
+    setStylePreviewOpen(false);
+  };
+
+  const undoFormat = () => setFormatHistoryIndex((index) => Math.max(0, index - 1));
+  const redoFormat = () => setFormatHistoryIndex((index) => Math.min(formatHistory.length - 1, index + 1));
 
   const saveDocument = async () => {
     if (!documentText.trim()) {
@@ -339,6 +384,8 @@ export default function Home() {
     setDocumentText(savedDocument.text);
     setReviewState("idle");
     setEmptyMessage("");
+    setStylePreviewOpen(false);
+    resetFormatHistory();
     setSaveMessage(`‘${savedDocument.title}’ 본문을 불러왔습니다.`);
     window.requestAnimationFrame(() => {
       if (!editorRef.current) return;
@@ -417,17 +464,30 @@ export default function Home() {
           </div>
 
           <div className="document-editor">
-            <label htmlFor="documentText">신청서 양식 전체 텍스트</label>
-            <textarea
-              id="documentText"
-              ref={editorRef}
-              value={documentText}
-              onChange={(event) => updateText(event.target.value)}
-              placeholder="여기에 배포할 신청서 양식의 본문을 붙여 넣어 주세요."
-              aria-invalid={reviewState === "issue"}
-              aria-describedby="review-rule"
-              maxLength={10000}
-            />
+            <div className="editor-label-row">
+              {formatApplied ? <span className="editor-label">서식이 적용된 신청서 양식 본문</span> : <label htmlFor="documentText">신청서 양식 전체 텍스트</label>}
+              {formatHistory.length > 1 && (
+                <div className="format-history" aria-label="서식 적용 기록">
+                  <button type="button" onClick={undoFormat} disabled={!canUndoFormat} aria-label="서식 적용 실행 취소">← <span>실행 취소</span></button>
+                  <button type="button" onClick={redoFormat} disabled={!canRedoFormat} aria-label="서식 적용 다시 실행"><span>다시 실행</span> →</button>
+                </div>
+              )}
+            </div>
+            {formatApplied ? (
+              <StyledDocument blocks={styledBlocks} className="styled-document applied-style-document" label="서식이 적용된 신청서 양식 본문" />
+            ) : (
+              <textarea
+                id="documentText"
+                ref={editorRef}
+                value={documentText}
+                onChange={(event) => updateText(event.target.value)}
+                placeholder="여기에 배포할 신청서 양식의 본문을 붙여 넣어 주세요."
+                aria-invalid={reviewState === "issue"}
+                aria-describedby="review-rule"
+                maxLength={10000}
+              />
+            )}
+            {formatApplied && <p className="format-applied-message" aria-live="polite">자동 서식을 본문 영역에 적용했습니다. 실행 취소로 원문 입력 화면으로 돌아갈 수 있습니다.</p>}
             <div className="editor-meta expanded-criteria">
               <div id="review-rule">
                 <p><strong>검토 항목</strong> 본문에서 안내한 항목에 실제 정보가 함께 기재되어 있는지 확인합니다.</p>
@@ -455,7 +515,10 @@ export default function Home() {
                   <h4 id="style-preview-title">배포 문서 스타일 미리보기</h4>
                   <p>첫 줄, 문장 길이, 안내 표현과 정보 형식을 분석해 크기·색·간격을 자동으로 구분했습니다.</p>
                 </div>
-                <button type="button" onClick={() => setStylePreviewOpen(false)}>미리보기 닫기</button>
+                <div className="style-preview-actions">
+                  <button className="apply-style-button" type="button" onClick={applyStyleToDocument}>원문에 서식 적용</button>
+                  <button type="button" onClick={() => setStylePreviewOpen(false)}>미리보기 닫기</button>
+                </div>
               </div>
 
               <div className="style-analysis" aria-label="자동 서식 분석 결과">
@@ -464,20 +527,9 @@ export default function Home() {
                 <span>본문 {styledBlocks.filter((block) => block.kind === "body" || block.kind === "bullet").length}개</span>
               </div>
 
-              <article className="styled-document" aria-label="자동으로 스타일을 적용한 문서 미리보기">
-                {styledBlocks.map((block) => {
-                  if (block.kind === "title") return <h5 className="styled-title" key={block.id}>{block.text}</h5>;
-                  if (block.kind === "heading") return <h6 className="styled-heading" key={block.id}>{block.text}</h6>;
-                  if (block.kind === "notice") return <p className="styled-notice" key={block.id}><strong>!</strong>{block.text}</p>;
-                  if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span>•</span>{block.text}</p>;
-                  if (block.kind === "information") {
-                    return <div className="styled-information" key={block.id}><strong>{block.label}</strong><span>{block.value}</span></div>;
-                  }
-                  return <p className="styled-body" key={block.id}>{block.text}</p>;
-                })}
-              </article>
+              <StyledDocument blocks={styledBlocks} className="styled-document" label="자동으로 스타일을 적용한 문서 미리보기" />
 
-              <p className="style-preview-note">원문은 변경하지 않습니다. 실제 배포 전 기관의 문서 서식 기준과 내용의 사실 여부를 최종 확인해 주세요.</p>
+              <p className="style-preview-note">서식을 적용해도 원문 텍스트는 유지됩니다. 실제 배포 전 기관의 문서 서식 기준과 내용의 사실 여부를 최종 확인해 주세요.</p>
             </section>
           )}
 
