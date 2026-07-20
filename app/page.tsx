@@ -169,7 +169,7 @@ export default function Home() {
 
     if (fields.length > 0) {
       const editorScrollTop = editorRef.current?.scrollTop ?? 0;
-      const separator = !documentText ? "" : documentText.endsWith("\n\n") ? "" : documentText.endsWith("\n") ? "\n" : "\n\n";
+      const separator = !documentText || documentText.endsWith("\n") ? "" : "\n";
       setDocumentText(`${documentText}${separator}${fields.join("\n")}`);
       setReviewState("issue");
       window.requestAnimationFrame(() => {
