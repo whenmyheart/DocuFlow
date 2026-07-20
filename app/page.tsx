@@ -97,9 +97,13 @@ function splitSentences(text: string) {
 
 function analyzeDocument(text: string): ReviewIssue[] {
   const sentences = splitSentences(text);
+  const informationText = text
+    .split(/\r?\n/)
+    .filter((line) => !reviewRules.some((rule) => line.trim() === rule.appendLabel))
+    .join("\n");
 
   return reviewRules.flatMap((rule) => {
-    if (!rule.trigger.test(text) || rule.information.test(text)) return [];
+    if (!rule.trigger.test(text) || rule.information.test(informationText)) return [];
     const evidence = sentences.find((sentence) => rule.trigger.test(sentence)) ?? text.trim();
     return [{ ...rule, evidence }];
   });
@@ -164,17 +168,14 @@ export default function Home() {
       .map((issue) => issue.appendLabel);
 
     if (fields.length > 0) {
-      const separator = documentText.trimEnd() ? "\n\n" : "";
-      setDocumentText(`${documentText.trimEnd()}${separator}${fields.join("\n")}`);
+      const editorScrollTop = editorRef.current?.scrollTop ?? 0;
+      const separator = !documentText ? "" : documentText.endsWith("\n\n") ? "" : documentText.endsWith("\n") ? "\n" : "\n\n";
+      setDocumentText(`${documentText}${separator}${fields.join("\n")}`);
       setReviewState("issue");
+      window.requestAnimationFrame(() => {
+        if (editorRef.current) editorRef.current.scrollTop = editorScrollTop;
+      });
     }
-
-    window.requestAnimationFrame(() => {
-      const editor = editorRef.current;
-      if (!editor) return;
-      editor.focus();
-      editor.setSelectionRange(editor.value.length, editor.value.length);
-    });
   };
 
   return (
@@ -271,7 +272,7 @@ export default function Home() {
             <div className="review-content">
               <div className="result-summary warning">
                 <span className="summary-icon" aria-hidden="true">!</span>
-                <div><strong>오류 {issues.length}건</strong><p>안내했지만 기재하지 않은 정보를 추가해 주세요.</p></div>
+                <div><strong>오류 {issues.length}건</strong><p>기재하지 않은 정보를 추가해 주세요.</p></div>
               </div>
 
               <div className="result-list multi-rule-results">
