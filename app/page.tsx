@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ReviewState = "idle" | "issue" | "complete" | "error";
 
@@ -16,6 +16,15 @@ type ReviewRule = {
 };
 
 type ReviewIssue = ReviewRule & { evidence: string };
+
+type SavedDocument = {
+  id: string;
+  title: string;
+  text: string;
+  savedAt: string;
+};
+
+const STORAGE_KEY = "docuflow-saved-documents";
 
 const sampleText = `[마을공유공간 이용 신청 안내]
 
@@ -113,7 +122,22 @@ export default function Home() {
   const [documentText, setDocumentText] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [emptyMessage, setEmptyMessage] = useState("");
+  const [savedDocuments, setSavedDocuments] = useState<SavedDocument[]>([]);
+  const [saveMessage, setSaveMessage] = useState("");
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        if (stored) setSavedDocuments(JSON.parse(stored) as SavedDocument[]);
+      } catch {
+        setSaveMessage("저장 목록을 불러오지 못했습니다.");
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const issues = useMemo(
     () => (reviewState === "issue" || reviewState === "complete" ? analyzeDocument(documentText) : []),
@@ -158,6 +182,43 @@ export default function Home() {
     setReviewState("idle");
     setEmptyMessage("");
     window.requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  const saveDocument = () => {
+    if (!documentText.trim()) {
+      setSaveMessage("저장할 본문을 먼저 입력해 주세요.");
+      editorRef.current?.focus();
+      return;
+    }
+
+    const firstLine = documentText.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "제목 없는 문서";
+    const savedDocument: SavedDocument = {
+      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+      title: firstLine.length > 36 ? `${firstLine.slice(0, 36)}…` : firstLine,
+      text: documentText,
+      savedAt: new Date().toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }),
+    };
+    const nextDocuments = [savedDocument, ...savedDocuments];
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments));
+      setSavedDocuments(nextDocuments);
+      setSaveMessage("현재 본문을 저장했습니다.");
+    } catch {
+      setSaveMessage("본문을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+    }
+  };
+
+  const loadDocument = (savedDocument: SavedDocument) => {
+    setDocumentText(savedDocument.text);
+    setReviewState("idle");
+    setEmptyMessage("");
+    setSaveMessage(`‘${savedDocument.title}’ 본문을 불러왔습니다.`);
+    window.requestAnimationFrame(() => {
+      if (!editorRef.current) return;
+      editorRef.current.scrollTop = 0;
+      editorRef.current.focus();
+    });
   };
 
   const appendMissingFields = () => {
@@ -247,6 +308,32 @@ export default function Home() {
             <button className="primary-button" type="button" onClick={review}>본문 누락 검토하기 <span>→</span></button>
             <button className="secondary-button" type="button" onClick={reset}>본문 지우기</button>
           </div>
+
+          <section className="document-storage" aria-labelledby="storage-title">
+            <div className="storage-heading">
+              <div>
+                <h4 id="storage-title">저장 목록 <span>{savedDocuments.length}</span></h4>
+                <p>작성한 본문은 현재 브라우저에만 저장됩니다.</p>
+              </div>
+              <button className="save-button" type="button" onClick={saveDocument}>현재 본문 저장</button>
+            </div>
+            {saveMessage && <p className="save-message" aria-live="polite">{saveMessage}</p>}
+            {savedDocuments.length === 0 ? (
+              <p className="saved-empty">저장된 본문이 없습니다.</p>
+            ) : (
+              <div className="saved-list">
+                {savedDocuments.map((savedDocument) => (
+                  <article className="saved-item" key={savedDocument.id}>
+                    <div>
+                      <strong>{savedDocument.title}</strong>
+                      <time>{savedDocument.savedAt}</time>
+                    </div>
+                    <button type="button" onClick={() => loadDocument(savedDocument)}>불러오기</button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
         <aside className="result-panel" aria-live="polite" aria-atomic="false">

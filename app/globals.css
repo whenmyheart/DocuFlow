@@ -192,6 +192,21 @@ main { min-height: 100vh; }
 .secondary-button { padding: 0 18px; border-color: #cad4cd; background: white; color: var(--muted); }
 .secondary-button:hover { color: var(--ink); border-color: #aab8af; }
 
+.document-storage { margin-top: 24px; padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: #f8faf8; }
+.storage-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.storage-heading h4 { margin: 0; font-size: 14px; }
+.storage-heading h4 span { margin-left: 4px; color: var(--green); }
+.storage-heading p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+.save-button, .saved-item button { min-height: 36px; padding: 0 13px; border: 1px solid #b8c9bf; border-radius: 6px; background: white; color: var(--green); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.save-button:hover, .saved-item button:hover { background: var(--green-soft); }
+.save-message { margin: 13px 0 0; color: var(--green); font-size: 11px; font-weight: 700; }
+.saved-empty { margin: 14px 0 0; padding: 14px; border-radius: 6px; background: white; color: var(--muted); text-align: center; font-size: 11px; }
+.saved-list { max-height: 210px; margin-top: 14px; display: grid; gap: 7px; overflow-y: auto; }
+.saved-item { padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid #d9e2dc; border-radius: 6px; background: white; }
+.saved-item > div { min-width: 0; display: grid; gap: 4px; }
+.saved-item strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.saved-item time { color: var(--muted); font-size: 9px; }
+
 .result-heading { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .empty-result { min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .document-preview { position: relative; width: 106px; height: 132px; margin-bottom: 28px; padding: 32px 18px; border: 1px solid #cfd8d2; border-radius: 5px; background: white; box-shadow: 12px 12px 0 #edf1ee; }
@@ -262,6 +277,8 @@ footer { padding: 0 20px 32px; color: #87918b; text-align: center; font-size: 10
   .primary-button, .secondary-button { width: 100%; }
   .secondary-button { min-height: 42px; }
   .document-editor textarea { min-height: 360px; padding: 16px; }
+  .storage-heading { align-items: flex-start; }
+  .saved-item { align-items: flex-start; }
   .editor-meta { flex-direction: column; gap: 5px; }
   .empty-result, .complete-result, .error-result { min-height: 350px; }
 }
