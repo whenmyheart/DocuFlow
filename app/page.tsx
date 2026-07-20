@@ -26,6 +26,32 @@ type SavedDocument = {
 
 const STORAGE_KEY = "docuflow-saved-documents";
 
+const SEARCH_TERM_GROUPS = [
+  ["비용", "요금", "수수료", "이용료", "참가비", "무료", "금액", "납부", "결제", "돈"],
+  ["문의", "문의처", "연락", "연락처", "전화", "이메일", "담당자"],
+  ["첨부", "첨부서류", "제출", "제출서류", "구비서류", "증명서", "등본", "사본", "파일"],
+  ["기간", "일정", "날짜", "마감", "기한", "언제", "접수기간"],
+  ["사이트", "홈페이지", "웹", "링크", "접속", "온라인"],
+  ["제출처", "접수처", "장소", "위치", "주소", "어디", "센터"],
+  ["신청", "접수", "지원", "등록", "신청서", "양식"],
+  ["이용", "사용", "대관", "시설", "공간"],
+];
+
+function getRelatedSearchTerms(query: string) {
+  const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const relatedTerms = new Set(queryTerms);
+
+  queryTerms.forEach((queryTerm) => {
+    SEARCH_TERM_GROUPS.forEach((group) => {
+      if (group.some((term) => term.includes(queryTerm) || queryTerm.includes(term))) {
+        group.forEach((term) => relatedTerms.add(term));
+      }
+    });
+  });
+
+  return { queryTerms, relatedTerms: [...relatedTerms] };
+}
+
 const sampleText = `[마을공유공간 이용 신청 안내]
 
 한빛시 주민과 관내 단체는 마을공유공간 이용을 신청할 수 있습니다.
@@ -124,6 +150,7 @@ export default function Home() {
   const [emptyMessage, setEmptyMessage] = useState("");
   const [savedDocuments, setSavedDocuments] = useState<SavedDocument[]>([]);
   const [saveMessage, setSaveMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -143,6 +170,30 @@ export default function Home() {
     () => (reviewState === "issue" || reviewState === "complete" ? analyzeDocument(documentText) : []),
     [documentText, reviewState],
   );
+
+  const filteredDocuments = useMemo(() => {
+    if (!searchQuery.trim()) return savedDocuments;
+
+    const { queryTerms, relatedTerms } = getRelatedSearchTerms(searchQuery.trim());
+
+    return savedDocuments
+      .map((savedDocument) => {
+        const title = savedDocument.title.toLowerCase();
+        const text = savedDocument.text.toLowerCase();
+        const directScore = queryTerms.reduce(
+          (score, term) => score + (title.includes(term) ? 4 : 0) + (text.includes(term) ? 2 : 0),
+          0,
+        );
+        const relatedScore = relatedTerms.reduce(
+          (score, term) => score + (title.includes(term) ? 2 : 0) + (text.includes(term) ? 1 : 0),
+          0,
+        );
+        return { savedDocument, score: directScore + relatedScore };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ savedDocument }) => savedDocument);
+  }, [savedDocuments, searchQuery]);
 
   const review = () => {
     setEmptyMessage("");
@@ -219,6 +270,18 @@ export default function Home() {
       editorRef.current.scrollTop = 0;
       editorRef.current.focus();
     });
+  };
+
+  const deleteDocument = (savedDocument: SavedDocument) => {
+    const nextDocuments = savedDocuments.filter((item) => item.id !== savedDocument.id);
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments));
+      setSavedDocuments(nextDocuments);
+      setSaveMessage(`‘${savedDocument.title}’ 저장 내용을 삭제했습니다.`);
+    } catch {
+      setSaveMessage("저장 내용을 삭제하지 못했습니다. 다시 시도해 주세요.");
+    }
   };
 
   const appendMissingFields = () => {
@@ -318,17 +381,34 @@ export default function Home() {
               <button className="save-button" type="button" onClick={saveDocument}>현재 본문 저장</button>
             </div>
             {saveMessage && <p className="save-message" aria-live="polite">{saveMessage}</p>}
+            <div className="saved-search">
+              <label htmlFor="savedSearch">저장 문서 검색</label>
+              <input
+                id="savedSearch"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="예: 비용, 연락처, 첨부서류"
+              />
+              <small>입력한 단어와 의미가 가까운 표현도 함께 찾는 규칙 기반 예시 검색입니다.</small>
+            </div>
+            {searchQuery.trim() && <p className="search-result-count">검색 결과 {filteredDocuments.length}건</p>}
             {savedDocuments.length === 0 ? (
               <p className="saved-empty">저장된 본문이 없습니다.</p>
+            ) : filteredDocuments.length === 0 ? (
+              <p className="saved-empty">관련된 저장 본문을 찾지 못했습니다.</p>
             ) : (
               <div className="saved-list">
-                {savedDocuments.map((savedDocument) => (
+                {filteredDocuments.map((savedDocument) => (
                   <article className="saved-item" key={savedDocument.id}>
                     <div>
                       <strong>{savedDocument.title}</strong>
                       <time>{savedDocument.savedAt}</time>
                     </div>
-                    <button type="button" onClick={() => loadDocument(savedDocument)}>불러오기</button>
+                    <div className="saved-actions">
+                      <button type="button" onClick={() => loadDocument(savedDocument)}>불러오기</button>
+                      <button className="delete-button" type="button" onClick={() => deleteDocument(savedDocument)}>삭제</button>
+                    </div>
                   </article>
                 ))}
               </div>

@@ -200,12 +200,22 @@ main { min-height: 100vh; }
 .save-button, .saved-item button { min-height: 36px; padding: 0 13px; border: 1px solid #b8c9bf; border-radius: 6px; background: white; color: var(--green); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .save-button:hover, .saved-item button:hover { background: var(--green-soft); }
 .save-message { margin: 13px 0 0; color: var(--green); font-size: 11px; font-weight: 700; }
+.saved-search { margin-top: 14px; display: grid; gap: 6px; }
+.saved-search label { color: var(--ink); font-size: 11px; font-weight: 800; }
+.saved-search input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #c7d6cd; border-radius: 6px; background: white; color: var(--ink); outline: none; }
+.saved-search input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(25,95,59,.1); }
+.saved-search input::placeholder { color: #98a29c; }
+.saved-search small { color: var(--muted); font-size: 9px; line-height: 1.5; }
+.search-result-count { margin: 11px 0 0; color: var(--green); font-size: 10px; font-weight: 800; }
 .saved-empty { margin: 14px 0 0; padding: 14px; border-radius: 6px; background: white; color: var(--muted); text-align: center; font-size: 11px; }
 .saved-list { max-height: 210px; margin-top: 14px; display: grid; gap: 7px; overflow-y: auto; }
 .saved-item { padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid #d9e2dc; border-radius: 6px; background: white; }
-.saved-item > div { min-width: 0; display: grid; gap: 4px; }
+.saved-item > div:first-child { min-width: 0; display: grid; gap: 4px; }
 .saved-item strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .saved-item time { color: var(--muted); font-size: 9px; }
+.saved-actions { display: flex; gap: 6px; }
+.saved-item .delete-button { border-color: #e2c7c2; color: var(--danger); }
+.saved-item .delete-button:hover { background: #fff0ed; }
 
 .result-heading { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .empty-result { min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
@@ -279,6 +289,7 @@ footer { padding: 0 20px 32px; color: #87918b; text-align: center; font-size: 10
   .document-editor textarea { min-height: 360px; padding: 16px; }
   .storage-heading { align-items: flex-start; }
   .saved-item { align-items: flex-start; }
+  .saved-actions { flex-direction: column; }
   .editor-meta { flex-direction: column; gap: 5px; }
   .empty-result, .complete-result, .error-result { min-height: 350px; }
 }
