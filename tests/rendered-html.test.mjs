@@ -42,6 +42,8 @@ test("keeps one document input and removes the starter preview", async () => {
   assert.match(page, /문의처 정보 누락/);
   assert.match(page, /사이트 주소 누락/);
   assert.match(page, /신청 기간 정보 누락/);
+  assert.match(page, /\(\?:\^\|\[\^\\d\]\)\\d\{1,2\}/);
+  assert.doesNotMatch(page, /\\d\{1,2\}\\s\*\[월\.\/-\]\\s\*\(\?:\\d\{1,2\}\\s\*일\?\)\?/);
   assert.match(page, /제출처 정보 누락/);
   assert.match(page, /첨부서류 정보 누락/);
   assert.match(page, /비용 정보 누락/);
