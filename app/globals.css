@@ -146,6 +146,8 @@ main { min-height: 100vh; }
   color: var(--ink);
   line-height: 1.85;
   resize: vertical;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   outline: none;
   transition: border .18s, box-shadow .18s, background .18s;
 }
