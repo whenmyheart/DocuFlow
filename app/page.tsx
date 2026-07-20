@@ -7,6 +7,7 @@ type ReviewState = "idle" | "issue" | "complete" | "error";
 type ReviewRule = {
   id: string;
   label: string;
+  appendLabel: string;
   title: string;
   trigger: RegExp;
   information: RegExp;
@@ -27,6 +28,7 @@ const sampleText = `[마을공유공간 이용 신청 안내]
 const reviewRules: ReviewRule[] = [
   {
     id: "contact",
+    appendLabel: "문의처:",
     label: "문의처",
     title: "문의처 정보 누락",
     trigger: /(문의처|문의가|문의\s|연락해\s*주|연락\s*바랍)/,
@@ -36,6 +38,7 @@ const reviewRules: ReviewRule[] = [
   },
   {
     id: "website",
+    appendLabel: "사이트:",
     label: "사이트",
     title: "사이트 주소 누락",
     trigger: /(사이트|홈페이지|웹\s*사이트|링크|접속)/,
@@ -45,6 +48,7 @@ const reviewRules: ReviewRule[] = [
   },
   {
     id: "period",
+    appendLabel: "신청 기간:",
     label: "신청 기간",
     title: "신청 기간 정보 누락",
     trigger: /((신청|접수).{0,12}(기간|마감|기한)|마감일|기간\s*내)/,
@@ -54,6 +58,7 @@ const reviewRules: ReviewRule[] = [
   },
   {
     id: "submission",
+    appendLabel: "제출처:",
     label: "제출처",
     title: "제출처 정보 누락",
     trigger: /(아래|다음).{0,12}(접수처|제출처|주소)|(?:접수처|제출처).{0,10}(방문|제출|접수)/,
@@ -63,6 +68,7 @@ const reviewRules: ReviewRule[] = [
   },
   {
     id: "attachment",
+    appendLabel: "첨부서류:",
     label: "첨부서류",
     title: "첨부서류 정보 누락",
     trigger: /(첨부|구비\s*서류|제출\s*(?:서류|문서)|필요\s*서류|서류.{0,10}(첨부|제출)|(?:파일|문서).{0,10}첨부)/,
@@ -72,6 +78,7 @@ const reviewRules: ReviewRule[] = [
   },
   {
     id: "fee",
+    appendLabel: "비용:",
     label: "비용",
     title: "비용 정보 누락",
     trigger: /(수수료|이용료|참가비|비용|요금|금액|납부|입금|결제|유료)/,
@@ -147,6 +154,27 @@ export default function Home() {
     setReviewState("idle");
     setEmptyMessage("");
     window.requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  const appendMissingFields = () => {
+    if (issues.length === 0) return;
+
+    const fields = issues
+      .filter((issue) => !documentText.includes(issue.appendLabel))
+      .map((issue) => issue.appendLabel);
+
+    if (fields.length > 0) {
+      const separator = documentText.trimEnd() ? "\n\n" : "";
+      setDocumentText(`${documentText.trimEnd()}${separator}${fields.join("\n")}`);
+      setReviewState("issue");
+    }
+
+    window.requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.focus();
+      editor.setSelectionRange(editor.value.length, editor.value.length);
+    });
   };
 
   return (
@@ -264,7 +292,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <button className="next-button" type="button" onClick={() => editorRef.current?.focus()}>
+              <button className="next-button" type="button" onClick={appendMissingFields}>
                 본문에 누락 정보 추가하기 <span>→</span>
               </button>
             </div>
