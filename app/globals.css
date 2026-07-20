@@ -223,10 +223,14 @@ main { min-height: 100vh; }
 .styled-information { margin: 8px 0; display: grid; grid-template-columns: minmax(80px, 120px) 1fr; border: 1px solid #d7e3db; border-radius: 6px; overflow: hidden; font-size: 12px; line-height: 1.6; }
 .styled-information strong { padding: 10px 12px; background: var(--green-soft); color: var(--green-dark); }
 .styled-information span { min-width: 0; padding: 10px 12px; color: #35433b; overflow-wrap: anywhere; }
+.styled-empty-field { margin: 4px 0; display: grid; grid-template-columns: minmax(80px, 120px) 1fr; align-items: center; border-bottom: 1px solid #d7e3db; font-size: 12px; line-height: 1.6; }
+.styled-empty-field strong { padding: 8px 10px; color: var(--green); }
+.styled-empty-field span { min-height: 34px; padding: 8px 10px; color: #35433b; overflow-wrap: anywhere; }
+.styled-empty-field span:empty::before { color: #9aa49e; content: attr(data-placeholder); }
 .applied-style-document { min-height: 410px; max-height: 560px; border-color: #8fb3a0; box-shadow: inset 0 0 0 3px rgba(25,95,59,.07); }
 .applied-style-document [contenteditable="true"] { border-radius: 4px; cursor: text; outline: 0; transition: background .15s, box-shadow .15s; }
-.applied-style-document [contenteditable="true"]:hover { background: #f1f7f3; box-shadow: 0 0 0 4px #f1f7f3; }
-.applied-style-document [contenteditable="true"]:focus { background: #fff8df; box-shadow: 0 0 0 4px #fff8df, 0 0 0 5px #d5a952; }
+.applied-style-document [contenteditable="true"]:hover { background: rgba(25,95,59,.035); }
+.applied-style-document [contenteditable="true"]:focus { background: transparent; box-shadow: inset 0 -2px 0 #79a68b; }
 .styled-notice > span { flex: 1; }
 .format-applied-message { margin: 9px 0 0; color: var(--green); font-size: 10px; font-weight: 700; line-height: 1.5; }
 .style-preview-note { margin: 12px 0 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
@@ -331,6 +335,7 @@ footer { padding: 0 20px 32px; color: #87918b; text-align: center; font-size: 10
   .style-preview-actions button { width: 100%; }
   .styled-document { padding: 22px 17px; }
   .styled-information { grid-template-columns: 1fr; }
+  .styled-empty-field { grid-template-columns: minmax(78px, 100px) 1fr; }
   .editor-label-row { align-items: flex-start; flex-direction: column; }
   .format-history { width: 100%; }
   .format-history button { flex: 1; }

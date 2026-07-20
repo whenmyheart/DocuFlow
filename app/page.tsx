@@ -27,7 +27,7 @@ type StyledBlock = {
   id: string;
   sourceIndex: number;
   rawText: string;
-  kind: "title" | "heading" | "body" | "notice" | "bullet" | "information";
+  kind: "title" | "heading" | "body" | "notice" | "bullet" | "information" | "emptyField";
   text: string;
   label?: string;
   value?: string;
@@ -188,6 +188,10 @@ function createStyledBlocks(text: string): StyledBlock[] {
       return { ...base, kind: "information" as const, text: line, label: information[1], value: information[2] };
     }
 
+    if (reviewRules.some((rule) => rule.appendLabel === line)) {
+      return { ...base, kind: "emptyField" as const, text: line.replace(/[:：]$/, ""), label: line.replace(/[:：]$/, ""), value: "" };
+    }
+
     if (/[:：]$/.test(line) || (line.length <= 28 && !/[.!?。]$/.test(line))) {
       return { ...base, kind: "heading" as const, text: line.replace(/[:：]$/, "") };
     }
@@ -220,6 +224,9 @@ function StyledDocument({
         if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span aria-hidden="true">•</span><span className="styled-bullet-text" {...editableProps} aria-label={editable ? "목록 문장 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</span></p>;
         if (block.kind === "information") {
           return <div className="styled-information" key={block.id}><strong {...editableProps} aria-label={editable ? "정보 항목명 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "", "label") : undefined}>{block.label}</strong><span {...editableProps} aria-label={editable ? `${block.label} 내용 수정` : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "", "value") : undefined}>{block.value}</span></div>;
+        }
+        if (block.kind === "emptyField") {
+          return <div className="styled-empty-field" key={block.id}><strong>{block.label}</strong><span data-placeholder="정보 입력" {...editableProps} aria-label={editable ? `${block.label} 내용 수정` : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "", "value") : undefined}></span></div>;
         }
         return <p className="styled-body" key={block.id} {...editableProps} aria-label={editable ? "본문 문장 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</p>;
       })}
@@ -292,7 +299,7 @@ export default function Home() {
   const styledBlocks = useMemo(() => createStyledBlocks(documentText), [documentText]);
   const styleSummary = useMemo(() => ({
     headings: styledBlocks.filter((block) => block.kind === "title" || block.kind === "heading").length,
-    highlighted: styledBlocks.filter((block) => block.kind === "notice" || block.kind === "information").length,
+    highlighted: styledBlocks.filter((block) => block.kind === "notice" || block.kind === "information" || block.kind === "emptyField").length,
   }), [styledBlocks]);
   const formatApplied = formatHistory[formatHistoryIndex] ?? false;
   const canUndoFormat = formatHistoryIndex > 0;
@@ -390,6 +397,7 @@ export default function Home() {
       const nextValue = part === "value" ? cleanedValue : block.value ?? "";
       nextLine = `${nextLabel}: ${nextValue}`;
     }
+    if (block.kind === "emptyField") nextLine = `${block.label}: ${cleanedValue}`;
 
     lines[block.sourceIndex] = nextLine;
     const nextText = lines.join("\n");
