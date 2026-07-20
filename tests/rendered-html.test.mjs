@@ -52,6 +52,8 @@ test("keeps one document input and removes the starter preview", async () => {
   assert.match(page, /원문에 서식 적용/);
   assert.match(page, /서식 적용 실행 취소/);
   assert.match(page, /서식 적용 다시 실행/);
+  assert.match(page, /updateStyledBlock/);
+  assert.match(page, /제목이나 문장을 클릭해 바로 수정/);
   assert.match(page, /담당부서\|담당자\|연락처/);
   assert.doesNotMatch(page, /id="formTitle"|id="audience"|id="applicationPeriod"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

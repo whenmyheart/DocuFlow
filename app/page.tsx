@@ -25,6 +25,8 @@ type ReviewIssue = ReviewRule & { evidence: string };
 
 type StyledBlock = {
   id: string;
+  sourceIndex: number;
+  rawText: string;
   kind: "title" | "heading" | "body" | "notice" | "bullet" | "information";
   text: string;
   label?: string;
@@ -167,44 +169,59 @@ function analyzeDocument(text: string): ReviewIssue[] {
 function createStyledBlocks(text: string): StyledBlock[] {
   const lines = text
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+    .map((line, sourceIndex) => ({ rawText: line, sourceIndex, text: line.trim() }))
+    .filter(({ text: line }) => Boolean(line));
 
-  return lines.map((line, index) => {
-    const id = `${index}-${line.slice(0, 16)}`;
+  return lines.map(({ rawText, sourceIndex, text: line }, index) => {
+    const id = `${sourceIndex}-${line.slice(0, 16)}`;
+    const base = { id, sourceIndex, rawText };
     const titleText = line.match(/^\[(.+)]$/)?.[1] ?? line;
 
-    if (index === 0) return { id, kind: "title", text: titleText };
-    if (/^(?:※|주의|유의|필수|알림)|(?:반드시|꼭)\s/.test(line)) return { id, kind: "notice", text: line };
+    if (index === 0) return { ...base, kind: "title" as const, text: titleText };
+    if (/^(?:※|주의|유의|필수|알림)|(?:반드시|꼭)\s/.test(line)) return { ...base, kind: "notice" as const, text: line };
     if (/^(?:[-•·▪]|\d+[.)])\s*/.test(line)) {
-      return { id, kind: "bullet", text: line.replace(/^(?:[-•·▪]|\d+[.)])\s*/, "") };
+      return { ...base, kind: "bullet" as const, text: line.replace(/^(?:[-•·▪]|\d+[.)])\s*/, "") };
     }
 
     const information = line.match(/^([^:：]{1,18})[:：]\s*(.+)$/);
     if (information) {
-      return { id, kind: "information", text: line, label: information[1], value: information[2] };
+      return { ...base, kind: "information" as const, text: line, label: information[1], value: information[2] };
     }
 
     if (/[:：]$/.test(line) || (line.length <= 28 && !/[.!?。]$/.test(line))) {
-      return { id, kind: "heading", text: line.replace(/[:：]$/, "") };
+      return { ...base, kind: "heading" as const, text: line.replace(/[:：]$/, "") };
     }
 
-    return { id, kind: "body", text: line };
+    return { ...base, kind: "body" as const, text: line };
   });
 }
 
-function StyledDocument({ blocks, className, label }: { blocks: StyledBlock[]; className: string; label: string }) {
+function StyledDocument({
+  blocks,
+  className,
+  editable = false,
+  label,
+  onBlockChange,
+}: {
+  blocks: StyledBlock[];
+  className: string;
+  editable?: boolean;
+  label: string;
+  onBlockChange?: (block: StyledBlock, value: string, part?: "label" | "value") => void;
+}) {
+  const editableProps = editable ? { contentEditable: true, role: "textbox", spellCheck: true, suppressContentEditableWarning: true, tabIndex: 0 } : {};
+
   return (
     <article className={className} aria-label={label}>
       {blocks.map((block) => {
-        if (block.kind === "title") return <h5 className="styled-title" key={block.id}>{block.text}</h5>;
-        if (block.kind === "heading") return <h6 className="styled-heading" key={block.id}>{block.text}</h6>;
-        if (block.kind === "notice") return <p className="styled-notice" key={block.id}><strong>!</strong>{block.text}</p>;
-        if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span>•</span>{block.text}</p>;
+        if (block.kind === "title") return <h5 className="styled-title" key={block.id} {...editableProps} aria-label={editable ? "문서 제목 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</h5>;
+        if (block.kind === "heading") return <h6 className="styled-heading" key={block.id} {...editableProps} aria-label={editable ? "소제목 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</h6>;
+        if (block.kind === "notice") return <p className="styled-notice" key={block.id}><strong>!</strong><span {...editableProps} aria-label={editable ? "강조 문장 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</span></p>;
+        if (block.kind === "bullet") return <p className="styled-bullet" key={block.id}><span aria-hidden="true">•</span><span className="styled-bullet-text" {...editableProps} aria-label={editable ? "목록 문장 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</span></p>;
         if (block.kind === "information") {
-          return <div className="styled-information" key={block.id}><strong>{block.label}</strong><span>{block.value}</span></div>;
+          return <div className="styled-information" key={block.id}><strong {...editableProps} aria-label={editable ? "정보 항목명 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "", "label") : undefined}>{block.label}</strong><span {...editableProps} aria-label={editable ? `${block.label} 내용 수정` : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "", "value") : undefined}>{block.value}</span></div>;
         }
-        return <p className="styled-body" key={block.id}>{block.text}</p>;
+        return <p className="styled-body" key={block.id} {...editableProps} aria-label={editable ? "본문 문장 수정" : undefined} onBlur={editable ? (event) => onBlockChange?.(block, event.currentTarget.textContent ?? "") : undefined}>{block.text}</p>;
       })}
     </article>
   );
@@ -356,6 +373,33 @@ export default function Home() {
   const undoFormat = () => setFormatHistoryIndex((index) => Math.max(0, index - 1));
   const redoFormat = () => setFormatHistoryIndex((index) => Math.min(formatHistory.length - 1, index + 1));
 
+  const updateStyledBlock = (block: StyledBlock, value: string, part?: "label" | "value") => {
+    const cleanedValue = value.replace(/\s+/g, " ").trim();
+    const lines = documentText.split(/\r?\n/);
+    const originalLine = lines[block.sourceIndex] ?? block.rawText;
+    let nextLine = cleanedValue;
+
+    if (block.kind === "title" && /^\[.+]$/.test(originalLine.trim())) nextLine = `[${cleanedValue}]`;
+    if (block.kind === "heading" && /[:：]$/.test(originalLine.trim())) nextLine = `${cleanedValue}:`;
+    if (block.kind === "bullet") {
+      const prefix = originalLine.trim().match(/^(?:[-•·▪]|\d+[.)])\s*/)?.[0] ?? "- ";
+      nextLine = `${prefix}${cleanedValue}`;
+    }
+    if (block.kind === "information") {
+      const nextLabel = part === "label" ? cleanedValue : block.label ?? "항목";
+      const nextValue = part === "value" ? cleanedValue : block.value ?? "";
+      nextLine = `${nextLabel}: ${nextValue}`;
+    }
+
+    lines[block.sourceIndex] = nextLine;
+    const nextText = lines.join("\n");
+    setDocumentText(nextText);
+    setEmptyMessage("");
+    if (reviewState === "issue" || reviewState === "complete") {
+      setReviewState(nextText.trim() && analyzeDocument(nextText).length > 0 ? "issue" : nextText.trim() ? "complete" : "idle");
+    }
+  };
+
   const saveDocument = async () => {
     if (!documentText.trim()) {
       setSaveMessage("저장할 본문을 먼저 입력해 주세요.");
@@ -474,7 +518,7 @@ export default function Home() {
               )}
             </div>
             {formatApplied ? (
-              <StyledDocument blocks={styledBlocks} className="styled-document applied-style-document" label="서식이 적용된 신청서 양식 본문" />
+              <StyledDocument blocks={styledBlocks} className="styled-document applied-style-document" editable label="서식이 적용된 신청서 양식 본문" onBlockChange={updateStyledBlock} />
             ) : (
               <textarea
                 id="documentText"
@@ -487,7 +531,7 @@ export default function Home() {
                 maxLength={10000}
               />
             )}
-            {formatApplied && <p className="format-applied-message" aria-live="polite">자동 서식을 본문 영역에 적용했습니다. 실행 취소로 원문 입력 화면으로 돌아갈 수 있습니다.</p>}
+            {formatApplied && <p className="format-applied-message" aria-live="polite">제목이나 문장을 클릭해 바로 수정할 수 있습니다. 실행 취소로 원문 입력 화면으로 돌아갈 수 있습니다.</p>}
             <div className="editor-meta expanded-criteria">
               <div id="review-rule">
                 <p><strong>검토 항목</strong> 본문에서 안내한 항목에 실제 정보가 함께 기재되어 있는지 확인합니다.</p>
