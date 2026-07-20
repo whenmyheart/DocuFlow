@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  deleteCloudDocument,
+  loadCloudDocuments,
+  saveCloudDocument,
+  type CloudDocument,
+} from "@/lib/firebase-documents";
 
 type ReviewState = "idle" | "issue" | "complete" | "error";
 
@@ -16,15 +22,6 @@ type ReviewRule = {
 };
 
 type ReviewIssue = ReviewRule & { evidence: string };
-
-type SavedDocument = {
-  id: string;
-  title: string;
-  text: string;
-  savedAt: string;
-};
-
-const STORAGE_KEY = "docuflow-saved-documents";
 
 const SEARCH_TERM_GROUPS = [
   ["비용", "요금", "수수료", "이용료", "참가비", "무료", "금액", "납부", "결제", "돈"],
@@ -50,6 +47,21 @@ function getRelatedSearchTerms(query: string) {
   });
 
   return { queryTerms, relatedTerms: [...relatedTerms] };
+}
+
+function formatSavedAt(savedAt: number) {
+  return new Date(savedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function getFirebaseConnectionMessage(error: unknown) {
+  const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+  if (code === "auth/admin-restricted-operation") {
+    return "Firebase 익명 로그인이 비활성화되어 있습니다. Authentication에서 익명 로그인을 활성화해 주세요.";
+  }
+  if (code === "permission-denied") {
+    return "Firestore 보안 규칙이 저장 문서 접근을 허용하지 않습니다.";
+  }
+  return "Firebase에 연결하지 못했습니다. 익명 로그인과 Firestore 설정을 확인해 주세요.";
 }
 
 const sampleText = `[마을공유공간 이용 신청 안내]
@@ -148,22 +160,30 @@ export default function Home() {
   const [documentText, setDocumentText] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [emptyMessage, setEmptyMessage] = useState("");
-  const [savedDocuments, setSavedDocuments] = useState<SavedDocument[]>([]);
+  const [savedDocuments, setSavedDocuments] = useState<CloudDocument[]>([]);
   const [saveMessage, setSaveMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [storageState, setStorageState] = useState<"connecting" | "ready" | "error">("connecting");
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      try {
-        const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored) setSavedDocuments(JSON.parse(stored) as SavedDocument[]);
-      } catch {
-        setSaveMessage("저장 목록을 불러오지 못했습니다.");
-      }
-    });
+    let active = true;
 
-    return () => window.cancelAnimationFrame(frame);
+    loadCloudDocuments()
+      .then((documents) => {
+        if (!active) return;
+        setSavedDocuments(documents);
+        setStorageState("ready");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setStorageState("error");
+        setSaveMessage(getFirebaseConnectionMessage(error));
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const issues = useMemo(
@@ -235,7 +255,7 @@ export default function Home() {
     window.requestAnimationFrame(() => editorRef.current?.focus());
   };
 
-  const saveDocument = () => {
+  const saveDocument = async () => {
     if (!documentText.trim()) {
       setSaveMessage("저장할 본문을 먼저 입력해 주세요.");
       editorRef.current?.focus();
@@ -243,24 +263,23 @@ export default function Home() {
     }
 
     const firstLine = documentText.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "제목 없는 문서";
-    const savedDocument: SavedDocument = {
-      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+    const savedDocument = {
       title: firstLine.length > 36 ? `${firstLine.slice(0, 36)}…` : firstLine,
       text: documentText,
-      savedAt: new Date().toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }),
+      savedAt: Date.now(),
     };
-    const nextDocuments = [savedDocument, ...savedDocuments];
 
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments));
-      setSavedDocuments(nextDocuments);
-      setSaveMessage("현재 본문을 저장했습니다.");
+      setSaveMessage("Firebase에 본문을 저장하는 중입니다.");
+      const createdDocument = await saveCloudDocument(savedDocument);
+      setSavedDocuments((documents) => [createdDocument, ...documents]);
+      setSaveMessage("Firebase에 현재 본문을 저장했습니다.");
     } catch {
-      setSaveMessage("본문을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+      setSaveMessage("Firebase에 본문을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 
-  const loadDocument = (savedDocument: SavedDocument) => {
+  const loadDocument = (savedDocument: CloudDocument) => {
     setDocumentText(savedDocument.text);
     setReviewState("idle");
     setEmptyMessage("");
@@ -272,15 +291,14 @@ export default function Home() {
     });
   };
 
-  const deleteDocument = (savedDocument: SavedDocument) => {
-    const nextDocuments = savedDocuments.filter((item) => item.id !== savedDocument.id);
-
+  const deleteDocument = async (savedDocument: CloudDocument) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments));
-      setSavedDocuments(nextDocuments);
-      setSaveMessage(`‘${savedDocument.title}’ 저장 내용을 삭제했습니다.`);
+      setSaveMessage("Firebase에서 저장 내용을 삭제하는 중입니다.");
+      await deleteCloudDocument(savedDocument.id);
+      setSavedDocuments((documents) => documents.filter((item) => item.id !== savedDocument.id));
+      setSaveMessage(`‘${savedDocument.title}’ 저장 내용을 Firebase에서 삭제했습니다.`);
     } catch {
-      setSaveMessage("저장 내용을 삭제하지 못했습니다. 다시 시도해 주세요.");
+      setSaveMessage("Firebase에서 저장 내용을 삭제하지 못했습니다. 다시 시도해 주세요.");
     }
   };
 
@@ -376,10 +394,11 @@ export default function Home() {
             <div className="storage-heading">
               <div>
                 <h4 id="storage-title">저장 목록 <span>{savedDocuments.length}</span></h4>
-                <p>작성한 본문은 현재 브라우저에만 저장됩니다.</p>
+                <p>작성한 본문은 DocuFlow Firebase에 저장됩니다.</p>
               </div>
-              <button className="save-button" type="button" onClick={saveDocument}>현재 본문 저장</button>
+              <button className="save-button" type="button" onClick={saveDocument} disabled={storageState !== "ready"}>현재 본문 저장</button>
             </div>
+            {storageState === "connecting" && <p className="save-message" aria-live="polite">Firebase 저장소에 연결 중입니다.</p>}
             {saveMessage && <p className="save-message" aria-live="polite">{saveMessage}</p>}
             <div className="saved-search">
               <label htmlFor="savedSearch">저장 문서 검색</label>
@@ -393,7 +412,9 @@ export default function Home() {
               <small>입력한 단어와 의미가 가까운 표현도 함께 찾는 규칙 기반 예시 검색입니다.</small>
             </div>
             {searchQuery.trim() && <p className="search-result-count">검색 결과 {filteredDocuments.length}건</p>}
-            {savedDocuments.length === 0 ? (
+            {storageState === "connecting" ? (
+              <p className="saved-empty">저장 목록을 불러오는 중입니다.</p>
+            ) : savedDocuments.length === 0 ? (
               <p className="saved-empty">저장된 본문이 없습니다.</p>
             ) : filteredDocuments.length === 0 ? (
               <p className="saved-empty">관련된 저장 본문을 찾지 못했습니다.</p>
@@ -403,11 +424,11 @@ export default function Home() {
                   <article className="saved-item" key={savedDocument.id}>
                     <div>
                       <strong>{savedDocument.title}</strong>
-                      <time>{savedDocument.savedAt}</time>
+                      <time>{formatSavedAt(savedDocument.savedAt)}</time>
                     </div>
                     <div className="saved-actions">
                       <button type="button" onClick={() => loadDocument(savedDocument)}>불러오기</button>
-                      <button className="delete-button" type="button" onClick={() => deleteDocument(savedDocument)}>삭제</button>
+                      <button className="delete-button" type="button" onClick={() => deleteDocument(savedDocument)} disabled={storageState !== "ready"}>삭제</button>
                     </div>
                   </article>
                 ))}
@@ -487,7 +508,7 @@ export default function Home() {
         </aside>
       </section>
 
-      <footer>문서체크 1-Day Prototype · 입력한 양식 내용은 브라우저를 벗어나 전송되지 않습니다.</footer>
+      <footer>문서체크 1-Day Prototype · 저장 버튼을 누른 본문은 사용자별 Firebase 저장소에 보관됩니다.</footer>
     </main>
   );
 }
