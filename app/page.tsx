@@ -5,6 +5,7 @@ import {
   deleteCloudDocument,
   loadCloudDocuments,
   saveCloudDocument,
+  updateCloudDocumentTitle,
   type CloudDocument,
 } from "@/lib/firebase-documents";
 import {
@@ -277,7 +278,7 @@ function createDraftBlocks(text: string): DraftBlock[] {
   });
 }
 
-function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null> }) {
+function DraftEditor({ text, onChange, editorRef, documentTypeId }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null>; documentTypeId: string }) {
   const blocks = useMemo(() => createDraftBlocks(text), [text]);
 
   const updateLine = (sourceIndex: number, value: string) => {
@@ -287,7 +288,7 @@ function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (v
   };
 
   return (
-    <div className="formatted-document" id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
+    <div className={`formatted-document document-template-${documentTypeId}`} id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
       {blocks.map((block) => {
         if (block.kind === "title") return <h3 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h3>;
         if (block.kind === "heading") return <h4 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h4>;
@@ -311,6 +312,18 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     if (block.kind === "important") return <p className="preview-important" key={block.sourceIndex}>{block.text}</p>;
     return <p key={block.sourceIndex}>{block.text}</p>;
   };
+  const documentTitle = titleBlock?.text ?? "문서";
+  const narrativeBlocks = bodyBlocks.filter((block) => block.kind !== "information");
+  const approvalBox = (
+    <div className="template-approval" aria-label="결재란">
+      <strong>결재</strong><span>담당</span><span>과장</span><span>부장</span><span>이사</span>
+    </div>
+  );
+  const detailRows = (rows = details) => (
+    <div className="template-table">
+      {rows.map((detail) => <div className="template-table-row" key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></div>)}
+    </div>
+  );
 
   if (documentTypeId === "notice") {
     const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
@@ -340,6 +353,75 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
             {detailBlocks.map(renderBlock)}
           </section>
         )}
+      </article>
+    );
+  }
+
+  if (documentTypeId === "application") {
+    const collection = details.find((detail) => /받을 정보|기재 항목/.test(detail.label));
+    const formItems = collection?.value.split(/[,，]/).map((item) => item.trim()).filter(Boolean) ?? [];
+    const guidanceRows = details.filter((detail) => detail !== collection);
+    return (
+      <article className="export-preview-document form-template application-template" aria-label="신청서 양식 미리보기">
+        <header className="template-title-with-approval"><h1>{documentTitle}</h1>{approvalBox}</header>
+        {guidanceRows.length > 0 && <section><h2>신청 안내</h2>{detailRows(guidanceRows)}</section>}
+        <section><h2>신청자 작성란</h2>
+          <div className="application-entry-grid">
+            {(formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((item) => <div key={item}><strong>{item}</strong><span aria-hidden="true" /></div>)}
+          </div>
+        </section>
+        {narrativeBlocks.length > 0 && <section className="template-writing-area"><h2>확인 및 기타 사항</h2>{narrativeBlocks.map(renderBlock)}</section>}
+      </article>
+    );
+  }
+
+  if (documentTypeId === "proposal") {
+    return (
+      <article className="export-preview-document form-template proposal-template" aria-label="기획서 미리보기">
+        <h1>{documentTitle}</h1>
+        {detailRows(details.slice(0, 3))}
+        {details.slice(3).map((detail) => <section className="proposal-section" key={detail.label}><h2>{detail.label}</h2><p>{detail.value}</p></section>)}
+        {narrativeBlocks.length > 0 && <section className="proposal-section"><h2>세부 실행 내용</h2>{narrativeBlocks.map(renderBlock)}</section>}
+      </article>
+    );
+  }
+
+  if (documentTypeId === "report" || documentTypeId === "minutes") {
+    const isMinutes = documentTypeId === "minutes";
+    return (
+      <article className={`export-preview-document form-template ${isMinutes ? "minutes-template" : "report-template"}`} aria-label={`${isMinutes ? "회의록" : "보고서"} 미리보기`}>
+        <header className="template-title-with-approval"><h1>{isMinutes ? "회 의 록" : "보 고 서"}</h1>{approvalBox}</header>
+        <p className="template-document-subject"><strong>{isMinutes ? "회의명" : "제목"}</strong><span>{documentTitle}</span></p>
+        {detailRows(details.slice(0, isMinutes ? 4 : 3))}
+        <section className="template-writing-area"><h2>{isMinutes ? "회의 내용" : "보고 내용"}</h2>{narrativeBlocks.map(renderBlock)}</section>
+        {details.slice(isMinutes ? 4 : 3).map((detail) => <section className="template-writing-area compact" key={detail.label}><h2>{detail.label}</h2><p>{detail.value}</p></section>)}
+      </article>
+    );
+  }
+
+  if (documentTypeId === "event") {
+    const featuredDetails = details.filter((detail) => /일시|장소/.test(detail.label));
+    const remainingDetails = details.filter((detail) => !featuredDetails.includes(detail));
+    return (
+      <article className="export-preview-document event-template" aria-label="행사 안내문 미리보기">
+        <span className="event-kicker">EVENT INFORMATION</span>
+        <h1>{documentTitle}</h1>
+        <div className="event-accent" aria-hidden="true" />
+        <div className="event-featured">{featuredDetails.map((detail) => <p key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></p>)}</div>
+        <div className="event-body">{narrativeBlocks.map(renderBlock)}</div>
+        {detailRows(remainingDetails)}
+      </article>
+    );
+  }
+
+  if (documentTypeId === "official") {
+    return (
+      <article className="export-preview-document official-letter-template" aria-label="협조 공문 미리보기">
+        <header><div><span>WORK COOPERATION NOTICE</span><h1>업무 협조공문</h1></div>{approvalBox}</header>
+        {detailRows(details)}
+        <p className="official-letter-subject">{documentTitle}</p>
+        <div className="official-letter-body">{narrativeBlocks.map(renderBlock)}</div>
+        <footer><p>위와 같이 협조를 요청드립니다.</p><strong>DocuFlow</strong></footer>
       </article>
     );
   }
@@ -498,12 +580,15 @@ export default function Home() {
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [reviewResult, setReviewResult] = useState<AiDocumentReview | null>(null);
   const [documentActionMessage, setDocumentActionMessage] = useState("");
+  const [documentName, setDocumentName] = useState("");
   const [exportPreviewFormat, setExportPreviewFormat] = useState<ExportPreviewFormat | null>(null);
   const [savedDocuments, setSavedDocuments] = useState<CloudDocument[]>([]);
   const [storageMessage, setStorageMessage] = useState("저장 목록을 불러오는 중입니다.");
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSearchIds, setAiSearchIds] = useState<string[] | null>(null);
   const [searchState, setSearchState] = useState<SearchState>("idle");
+  const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
+  const [editingSavedTitle, setEditingSavedTitle] = useState("");
   const formRef = useRef<HTMLElement | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
 
@@ -596,6 +681,7 @@ export default function Home() {
     setReviewState("idle");
     setReviewResult(null);
     setDocumentActionMessage("");
+    setDocumentName("");
     window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
@@ -615,6 +701,7 @@ export default function Home() {
     setReviewState("idle");
     setReviewResult(null);
     setDocumentActionMessage("");
+    setDocumentName("");
   };
 
   const clearDocument = () => {
@@ -627,6 +714,7 @@ export default function Home() {
     setReviewState("idle");
     setReviewResult(null);
     setDocumentActionMessage("");
+    setDocumentName("");
   };
 
   const generate = async () => {
@@ -650,6 +738,7 @@ export default function Home() {
         additionalRequest,
       });
       setGeneratedText(`${result.title}\n\n${result.content}`);
+      setDocumentName(result.title);
       setGenerationSummary(result.summary);
       setGenerationState("complete");
       window.requestAnimationFrame(() => resultRef.current?.focus());
@@ -657,6 +746,7 @@ export default function Home() {
       console.error("AI draft generation failed", error);
       const fallback = createBasicDraft(selectedType, fieldValues);
       setGeneratedText(`${fallback.title}\n\n${fallback.content}`);
+      setDocumentName(fallback.title);
       setGenerationSummary(fallback.summary);
       setGenerationState("complete");
       setMessage("AI 연결에 실패해 기본 초안을 표시했습니다. 입력 내용은 그대로 유지됩니다.");
@@ -805,10 +895,10 @@ export default function Home() {
 
   const saveGeneratedDocument = async () => {
     if (!generatedText.trim()) return;
-    const title = generatedText.split(/\r?\n/).find((line) => line.trim())?.trim().slice(0, 60) || "제목 없는 문서";
+    const title = documentName.trim().slice(0, 80) || generatedText.split(/\r?\n/).find((line) => line.trim())?.trim().slice(0, 80) || "제목 없는 문서";
     setStorageMessage("문서를 저장하는 중입니다.");
     try {
-      const saved = await saveCloudDocument({ title, text: generatedText, savedAt: Date.now() });
+      const saved = await saveCloudDocument({ title, text: generatedText, savedAt: Date.now(), documentTypeId: selectedType?.id });
       setSavedDocuments((current) => [saved, ...current]);
       setStorageMessage("작성한 문서를 저장했습니다.");
     } catch (error) {
@@ -817,10 +907,11 @@ export default function Home() {
   };
 
   const loadSavedDocument = (document: CloudDocument) => {
-    setSelectedTypeId("custom");
+    setSelectedTypeId(DOCUMENT_TYPES.some((type) => type.id === document.documentTypeId) ? document.documentTypeId! : "custom");
     setFieldValues({});
     setAdditionalRequest("");
     setGeneratedText(document.text);
+    setDocumentName(document.title);
     setGenerationSummary("저장했던 문서를 불러왔습니다. 내용을 바로 수정할 수 있습니다.");
     setGenerationState("complete");
     setReviewState("idle");
@@ -842,6 +933,28 @@ export default function Home() {
     }
   };
 
+  const beginEditingSavedTitle = (document: CloudDocument) => {
+    setEditingSavedId(document.id);
+    setEditingSavedTitle(document.title);
+  };
+
+  const saveEditedDocumentTitle = async (document: CloudDocument) => {
+    const nextTitle = editingSavedTitle.trim().slice(0, 80);
+    if (!nextTitle) {
+      setStorageMessage("문서명을 입력해 주세요.");
+      return;
+    }
+    try {
+      await updateCloudDocumentTitle(document.id, nextTitle);
+      setSavedDocuments((current) => current.map((item) => item.id === document.id ? { ...item, title: nextTitle } : item));
+      setEditingSavedId(null);
+      setEditingSavedTitle("");
+      setStorageMessage(`‘${nextTitle}’ 문서명으로 수정했습니다.`);
+    } catch (error) {
+      setStorageMessage(getFirebaseMessage(error));
+    }
+  };
+
   const startOver = () => {
     setSelectedTypeId("");
     setFieldValues({});
@@ -853,6 +966,7 @@ export default function Home() {
     setReviewState("idle");
     setReviewResult(null);
     setDocumentActionMessage("");
+    setDocumentName("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -952,7 +1066,8 @@ export default function Home() {
               <div className="result-complete">
                 <div className="complete-banner"><span>✓</span><div><strong>초안 작성 완료</strong><p>{generationSummary}</p></div></div>
                 <div className="draft-label">생성된 문서 <small>제목이나 문장을 눌러 직접 수정할 수 있습니다.</small></div>
-                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} />
+                <label className="document-name-editor"><span>문서명</span><input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="저장 목록에서 사용할 문서명을 입력해 주세요." /></label>
+                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} documentTypeId={selectedType.id} />
                 <div className="draft-tools" aria-label="문서 복사 및 내려받기">
                   <button type="button" onClick={copyGeneratedDocument}>복사</button>
                   <button type="button" onClick={() => setExportPreviewFormat("word")} aria-haspopup="dialog">Word</button>
@@ -995,7 +1110,7 @@ export default function Home() {
 
       <section className="storage-section" aria-labelledby="storage-heading">
         <div className="storage-title"><div><span>저장 목록</span><h2 id="storage-heading">나중에 이어서 작성하세요.</h2><p>목록에 저장한 문서를 불러와 바로 수정할 수 있습니다.</p></div><strong>{savedDocuments.length}</strong></div>
-        <label className="search-box"><span>⌕</span><input value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} placeholder="키워드나 관련 내용으로 AI 검색" /></label>
+        <label className="search-box"><span>⌕</span><input value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} placeholder="문서명, 키워드 또는 관련 내용으로 AI 검색" /></label>
         {searchQuery.trim() && (
           <p className={`search-status ${searchState}`} role="status">
             {searchState === "loading" && "AI가 키워드와 관련된 문서를 찾고 있습니다."}
@@ -1010,9 +1125,17 @@ export default function Home() {
             {filteredDocuments.map((document) => (
               <article className="saved-card" key={document.id}>
                 <div><span>문서</span><time>{formatSavedAt(document.savedAt)}</time></div>
-                <h3>{document.title}</h3>
+                {editingSavedId === document.id ? (
+                  <label className="saved-title-editor"><span>문서명 수정</span><input value={editingSavedTitle} onChange={(event) => setEditingSavedTitle(event.target.value)} maxLength={80} autoFocus /></label>
+                ) : <h3>{document.title}</h3>}
                 <p>{document.text.replace(/\s+/g, " ").slice(0, 95)}</p>
-                <div><button type="button" onClick={() => loadSavedDocument(document)}>불러오기</button><button className="delete" type="button" onClick={() => deleteSavedDocument(document)}>삭제</button></div>
+                <div>
+                  <button type="button" onClick={() => loadSavedDocument(document)}>불러오기</button>
+                  {editingSavedId === document.id ? (
+                    <><button type="button" onClick={() => void saveEditedDocumentTitle(document)}>문서명 저장</button><button type="button" onClick={() => setEditingSavedId(null)}>취소</button></>
+                  ) : <button type="button" onClick={() => beginEditingSavedTitle(document)}>문서명 수정</button>}
+                  <button className="delete" type="button" onClick={() => deleteSavedDocument(document)}>삭제</button>
+                </div>
               </article>
             ))}
           </div>

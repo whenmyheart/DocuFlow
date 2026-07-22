@@ -1,6 +1,6 @@
 import { getApps, initializeApp } from "firebase/app";
 import { browserLocalPersistence, getAuth, setPersistence, signInAnonymously, type User } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDocs, getFirestore, orderBy, query } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, getFirestore, orderBy, query, updateDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAVM3G9UQbdlw41pndaturMMmiVU6bw2Fk",
@@ -20,6 +20,7 @@ export type CloudDocument = {
   title: string;
   text: string;
   savedAt: number;
+  documentTypeId?: string;
 };
 
 let userPromise: Promise<User> | null = null;
@@ -52,6 +53,7 @@ export async function loadCloudDocuments(): Promise<CloudDocument[]> {
       title: String(data.title ?? "제목 없는 문서"),
       text: String(data.text ?? ""),
       savedAt: Number(data.savedAt ?? 0),
+      documentTypeId: typeof data.documentTypeId === "string" ? data.documentTypeId : undefined,
     };
   });
 }
@@ -65,4 +67,9 @@ export async function saveCloudDocument(document: Omit<CloudDocument, "id">): Pr
 export async function deleteCloudDocument(documentId: string) {
   const user = await getAnonymousUser();
   await deleteDoc(doc(db, "users", user.uid, "documents", documentId));
+}
+
+export async function updateCloudDocumentTitle(documentId: string, title: string) {
+  const user = await getAnonymousUser();
+  await updateDoc(doc(db, "users", user.uid, "documents", documentId), { title });
 }

@@ -59,6 +59,14 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /official-notice-preview/);
   assert.match(page, /공 지/);
   assert.match(page, /운영 내용 및 일정/);
+  assert.match(page, /application-template/);
+  assert.match(page, /proposal-template/);
+  assert.match(page, /report-template/);
+  assert.match(page, /minutes-template/);
+  assert.match(page, /event-template/);
+  assert.match(page, /official-letter-template/);
+  assert.match(page, /document-name-editor/);
+  assert.match(page, /문서명 수정/);
   assert.match(ai, /항목명: 내용/);
   assert.match(page, /AI 검수하기/);
   assert.match(page, /본문 지우기/);
@@ -76,6 +84,13 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(ai, /responseJsonSchema/);
   assert.match(ai, /의미 기반 검색 도우미/);
   assert.doesNotMatch(ai, /reviewDocumentWithAi|AIza/);
+});
+
+test("supports editable saved document names", async () => {
+  const firebaseDocuments = await readFile(new URL("../lib/firebase-documents.ts", import.meta.url), "utf8");
+  assert.match(firebaseDocuments, /updateCloudDocumentTitle/);
+  assert.match(firebaseDocuments, /updateDoc/);
+  assert.match(firebaseDocuments, /documentTypeId/);
 });
 
 test("ships direct PDF and HWPX download assets", async () => {
