@@ -315,14 +315,14 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
   const documentTitle = titleBlock?.text ?? "문서";
   const narrativeBlocks = bodyBlocks.filter((block) => block.kind !== "information");
   const approvalBox = (
-    <div className="template-approval" aria-label="결재란">
-      <strong>결재</strong><span>담당</span><span>과장</span><span>부장</span><span>이사</span>
-    </div>
+    <table className="template-approval" aria-label="결재란"><tbody><tr>
+      <th>결재</th><td>담당</td><td>과장</td><td>부장</td><td>이사</td>
+    </tr></tbody></table>
   );
   const detailRows = (rows = details) => (
-    <div className="template-table">
-      {rows.map((detail) => <div className="template-table-row" key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></div>)}
-    </div>
+    <table className="template-table"><tbody>
+      {rows.map((detail) => <tr className="template-table-row" key={detail.label}><th>{detail.label}</th><td>{detail.value}</td></tr>)}
+    </tbody></table>
   );
 
   if (documentTypeId === "notice") {
@@ -366,9 +366,9 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
         <header className="template-title-with-approval"><h1>{documentTitle}</h1>{approvalBox}</header>
         {guidanceRows.length > 0 && <section><h2>신청 안내</h2>{detailRows(guidanceRows)}</section>}
         <section><h2>신청자 작성란</h2>
-          <div className="application-entry-grid">
-            {(formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((item) => <div key={item}><strong>{item}</strong><span aria-hidden="true" /></div>)}
-          </div>
+          <table className="application-entry-grid"><tbody>
+            {(formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((item) => <tr key={item}><th>{item}</th><td aria-label={`${item} 작성란`} /></tr>)}
+          </tbody></table>
         </section>
         {narrativeBlocks.length > 0 && <section className="template-writing-area"><h2>확인 및 기타 사항</h2>{narrativeBlocks.map(renderBlock)}</section>}
       </article>
@@ -391,7 +391,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     return (
       <article className={`export-preview-document form-template ${isMinutes ? "minutes-template" : "report-template"}`} aria-label={`${isMinutes ? "회의록" : "보고서"} 미리보기`}>
         <header className="template-title-with-approval"><h1>{isMinutes ? "회 의 록" : "보 고 서"}</h1>{approvalBox}</header>
-        <p className="template-document-subject"><strong>{isMinutes ? "회의명" : "제목"}</strong><span>{documentTitle}</span></p>
+        <table className="template-document-subject"><tbody><tr><th>{isMinutes ? "회의명" : "제목"}</th><td>{documentTitle}</td></tr></tbody></table>
         {detailRows(details.slice(0, isMinutes ? 4 : 3))}
         <section className="template-writing-area"><h2>{isMinutes ? "회의 내용" : "보고 내용"}</h2>{narrativeBlocks.map(renderBlock)}</section>
         {details.slice(isMinutes ? 4 : 3).map((detail) => <section className="template-writing-area compact" key={detail.label}><h2>{detail.label}</h2><p>{detail.value}</p></section>)}
@@ -457,21 +457,39 @@ function escapeHtml(value: string) {
   })[character] ?? character);
 }
 
-function buildExportHtml(text: string, details: Array<{ label: string; value: string }> = []) {
-  const blocks = createDraftBlocks(text);
-  const renderedBlocks = blocks.map((block) => {
-    if (block.kind === "title") return `<h1>${escapeHtml(block.text)}</h1>`;
-    if (block.kind === "heading") return `<h2>${escapeHtml(block.text)}</h2>`;
-    if (block.kind === "information") return `<div class="info"><strong>${escapeHtml(block.label ?? "")}</strong><span>${escapeHtml(block.value ?? "")}</span></div>`;
-    if (block.kind === "bullet") return `<p class="bullet">• ${escapeHtml(block.text)}</p>`;
-    if (block.kind === "important") return `<p class="important">${escapeHtml(block.text)}</p>`;
-    return `<p>${escapeHtml(block.text)}</p>`;
+const INLINE_EXPORT_STYLES = [
+  "display", "width", "height", "min-height", "max-width", "box-sizing",
+  "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+  "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+  "border", "border-top", "border-right", "border-bottom", "border-left", "border-collapse",
+  "background-color", "color", "font-family", "font-size", "font-weight", "font-style",
+  "line-height", "letter-spacing", "text-align", "vertical-align", "white-space", "writing-mode",
+] as const;
+
+function getStyledPreviewMarkup() {
+  const source = document.querySelector<HTMLElement>(".export-preview-document");
+  if (!source) throw new Error("Export preview unavailable");
+  const clone = source.cloneNode(true) as HTMLElement;
+  const sourceElements = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
+  const clonedElements = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>("*"))];
+  sourceElements.forEach((element, index) => {
+    const target = clonedElements[index];
+    if (!target) return;
+    const computed = window.getComputedStyle(element);
+    INLINE_EXPORT_STYLES.forEach((property) => target.style.setProperty(property, computed.getPropertyValue(property)));
+    target.removeAttribute("aria-hidden");
   });
-  const overview = details.length
-    ? `<h2>문서 주요 정보</h2>${details.map((detail) => `<div class="info"><strong>${escapeHtml(detail.label)}</strong><span>${escapeHtml(detail.value)}</span></div>`).join("")}<h2>상세 내용</h2>`
-    : "";
-  const body = renderedBlocks.length ? `${renderedBlocks[0]}${overview}${renderedBlocks.slice(1).join("")}` : overview;
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#111;font-family:Aptos,"Malgun Gothic",Arial,sans-serif;line-height:1.75}h1{margin:0 0 34px;padding-bottom:18px;border-bottom:3px solid #4472c4;color:#111;font-size:29px}h2{margin:28px 0 11px;color:#111;font-size:18px}p{margin:0 0 15px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #b4c6e7;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#d9e2f3;color:#111}.important{padding:12px 14px;border-left:4px solid #4472c4;background:#eef3f9;color:#111;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
+  clone.style.width = "172mm";
+  clone.style.maxWidth = "172mm";
+  clone.style.minHeight = "257mm";
+  clone.style.margin = "0 auto";
+  clone.style.boxShadow = "none";
+  clone.style.overflow = "visible";
+  return clone.outerHTML;
+}
+
+function buildPreviewExportHtml(markup: string, title: string) {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:20mm 19mm}html,body{margin:0;padding:0;background:#fff;color:#111}table{border-collapse:collapse}*{box-sizing:border-box}@media print{article{min-height:auto!important}}</style></head><body>${markup}</body></html>`;
 }
 
 function downloadFile(content: BlobPart[], type: string, fileName: string) {
@@ -490,15 +508,6 @@ function safeDocumentName(text: string) {
     .replace(/[\\/:*?"<>|]/g, "_")
     .trim()
     .slice(0, 60);
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 32768) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
-  }
-  return window.btoa(binary);
 }
 
 function createBasicReview(documentType: DocumentType, values: Record<string, string>, text: string): AiDocumentReview {
@@ -771,51 +780,28 @@ export default function Home() {
   };
 
   const downloadWordDocument = () => {
-    downloadFile(["\ufeff", buildExportHtml(generatedText, exportPreviewDetails)], "application/msword;charset=utf-8", `${safeDocumentName(generatedText)}.doc`);
-    setDocumentActionMessage("Word 문서를 내려받았습니다.");
-    setExportPreviewFormat(null);
+    try {
+      const markup = getStyledPreviewMarkup();
+      const title = documentName.trim() || safeDocumentName(generatedText);
+      downloadFile(["\ufeff", buildPreviewExportHtml(markup, title)], "application/msword;charset=utf-8", `${safeDocumentName(title)}.doc`);
+      setDocumentActionMessage("미리보기 서식을 적용한 Word 문서를 내려받았습니다.");
+      setExportPreviewFormat(null);
+    } catch (error) {
+      console.error(error);
+      setDocumentActionMessage("Word 문서를 만들지 못했습니다. 미리보기를 다시 열어 시도해 주세요.");
+    }
   };
 
   const downloadHangulDocument = async () => {
     setDocumentActionMessage("한글 파일을 만들고 있습니다.");
     try {
-      const [{ default: JSZip }, templateResponse] = await Promise.all([
-        import("jszip"),
-        fetch("/docuflow-template.hwpx"),
-      ]);
-      if (!templateResponse.ok) throw new Error("HWPX template unavailable");
-      const zip = await JSZip.loadAsync(await templateResponse.arrayBuffer());
-      const sectionFile = zip.file("Contents/section0.xml");
-      if (!sectionFile) throw new Error("HWPX section unavailable");
-      const sectionXml = await sectionFile.async("string");
-      const [titleLine = "DocuFlow 문서", ...bodyLines] = generatedText.split(/\r?\n/);
-      const exportLines = exportPreviewDetails.length ? [
-        titleLine,
-        "",
-        "문서 주요 정보",
-        ...exportPreviewDetails.map((detail) => `${detail.label}: ${detail.value}`),
-        "",
-        "상세 내용",
-        ...bodyLines,
-      ] : [titleLine, ...bodyLines];
-      const paragraphs = exportLines.map((line, index) => (
-        `<hp:p id="${Date.now() + index}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:t>${escapeHtml(line)}</hp:t></hp:run></hp:p>`
-      )).join("");
-      const nextSectionXml = sectionXml.replace(
-        /<hp:p id="1698964157"[\s\S]*?<\/hp:p>/,
-        paragraphs,
-      );
-      if (nextSectionXml === sectionXml) throw new Error("HWPX placeholder unavailable");
-      zip.file("Contents/section0.xml", nextSectionXml);
-      zip.file("Preview/PrvText.txt", exportLines.join("\n"));
-      zip.file("mimetype", "application/hwp+zip", { compression: "STORE" });
-      const hwpx = await zip.generateAsync({
-        type: "blob",
-        mimeType: "application/hwp+zip",
-        compression: "DEFLATE",
-      });
-      downloadFile([hwpx], "application/hwp+zip", `${safeDocumentName(generatedText)}.hwpx`);
-      setDocumentActionMessage("한글 HWPX 파일을 내려받았습니다.");
+      const { htmlToHwpx } = await import("@ssabrojs/hwpxjs");
+      const title = documentName.trim() || safeDocumentName(generatedText);
+      const html = buildPreviewExportHtml(getStyledPreviewMarkup(), title);
+      const hwpx = await htmlToHwpx(html, { title, creator: "DocuFlow" });
+      const hwpxBuffer = hwpx.buffer.slice(hwpx.byteOffset, hwpx.byteOffset + hwpx.byteLength) as ArrayBuffer;
+      downloadFile([hwpxBuffer], "application/hwp+zip", `${safeDocumentName(title)}.hwpx`);
+      setDocumentActionMessage("미리보기 구조와 서식을 반영한 한글 HWPX 파일을 내려받았습니다.");
       setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);
@@ -826,44 +812,28 @@ export default function Home() {
   const downloadPdfDocument = async () => {
     setDocumentActionMessage("PDF 파일을 만들고 있습니다.");
     try {
-      const [{ jsPDF }, fontResponse] = await Promise.all([
-        import("jspdf"),
-        fetch("/fonts/NanumGothic-Regular.ttf"),
-      ]);
-      if (!fontResponse.ok) throw new Error("PDF font unavailable");
+      const preview = document.querySelector<HTMLElement>(".export-preview-document");
+      if (!preview) throw new Error("Export preview unavailable");
+      const [{ jsPDF }, { default: html2canvas }] = await Promise.all([import("jspdf"), import("html2canvas")]);
+      const canvas = await html2canvas(preview, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
       const pdf = new jsPDF({ unit: "mm", format: "a4" });
-      pdf.addFileToVFS("NanumGothic-Regular.ttf", arrayBufferToBase64(await fontResponse.arrayBuffer()));
-      pdf.addFont("NanumGothic-Regular.ttf", "NanumGothic", "normal");
-      pdf.setFont("NanumGothic", "normal");
-      const blocks = createDraftBlocks(generatedText);
-      let y = 24;
-      const writeLines = (text: string, fontSize: number, gap: number, color: [number, number, number]) => {
-        pdf.setFontSize(fontSize);
-        pdf.setTextColor(...color);
-        const lines = pdf.splitTextToSize(text, 170) as string[];
-        const lineHeight = fontSize * 0.45;
-        if (y + lines.length * lineHeight > 282) {
-          pdf.addPage();
-          pdf.setFont("NanumGothic", "normal");
-          y = 24;
-        }
-        pdf.text(lines, 20, y);
-        y += lines.length * lineHeight + gap;
-      };
-      blocks.forEach((block, index) => {
-        if (block.kind === "title") writeLines(block.text, 21, 8, [17, 17, 17]);
-        else if (block.kind === "heading") writeLines(block.text, 14, 4, [17, 17, 17]);
-        else if (block.kind === "information") writeLines(`${block.label}: ${block.value}`, 10.5, 3, [17, 17, 17]);
-        else if (block.kind === "bullet") writeLines(`• ${block.text}`, 10.5, 3, [17, 17, 17]);
-        else writeLines(block.text, 10.5, 4, [17, 17, 17]);
-        if (index === 0 && exportPreviewDetails.length) {
-          writeLines("문서 주요 정보", 14, 4, [17, 17, 17]);
-          exportPreviewDetails.forEach((detail) => writeLines(`${detail.label}: ${detail.value}`, 10.5, 2, [17, 17, 17]));
-          writeLines("상세 내용", 14, 4, [17, 17, 17]);
-        }
-      });
-      pdf.save(`${safeDocumentName(generatedText)}.pdf`);
-      setDocumentActionMessage("PDF 파일을 내려받았습니다.");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const imageHeight = canvas.height * pageWidth / canvas.width;
+      const imageData = canvas.toDataURL("image/png");
+      let remainingHeight = imageHeight;
+      let offsetY = 0;
+      pdf.addImage(imageData, "PNG", 0, offsetY, pageWidth, imageHeight, undefined, "FAST");
+      remainingHeight -= pageHeight;
+      while (remainingHeight > 0) {
+        offsetY = remainingHeight - imageHeight;
+        pdf.addPage();
+        pdf.addImage(imageData, "PNG", 0, offsetY, pageWidth, imageHeight, undefined, "FAST");
+        remainingHeight -= pageHeight;
+      }
+      const title = documentName.trim() || safeDocumentName(generatedText);
+      pdf.save(`${safeDocumentName(title)}.pdf`);
+      setDocumentActionMessage("미리보기 화면과 같은 PDF 파일을 내려받았습니다.");
       setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);

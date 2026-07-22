@@ -15,10 +15,11 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@ssabrojs/hwpxjs": "^0.4.0",
     "drizzle-orm": "0.45.2",
     "firebase": "^12.16.0",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
-    "jszip": "^3.10.1",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"

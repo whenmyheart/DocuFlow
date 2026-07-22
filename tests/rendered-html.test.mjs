@@ -48,7 +48,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /downloadHangulDocument/);
   assert.match(page, /downloadPdfDocument/);
   assert.match(page, /application\/hwp\+zip/);
-  assert.match(page, /NanumGothic-Regular\.ttf/);
+  assert.match(page, /getStyledPreviewMarkup/);
+  assert.match(page, /htmlToHwpx/);
+  assert.match(page, /html2canvas/);
   assert.match(page, /전체 화면 미리보기/);
   assert.match(page, /exportPreviewFormat/);
   assert.match(page, /downloadPreviewedDocument/);
@@ -93,13 +95,18 @@ test("supports editable saved document names", async () => {
   assert.match(firebaseDocuments, /documentTypeId/);
 });
 
-test("ships direct PDF and HWPX download assets", async () => {
-  const config = await readFile(new URL("../vite.firebase.config.ts", import.meta.url), "utf8");
+test("ships compatible export assets and conversion libraries", async () => {
+  const [config, packageJson] = await Promise.all([
+    readFile(new URL("../vite.firebase.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
   const [template, font] = await Promise.all([
     readFile(new URL("../public/docuflow-template.hwpx", import.meta.url)),
     readFile(new URL("../public/fonts/NanumGothic-Regular.ttf", import.meta.url)),
   ]);
   assert.match(config, /publicDir:\s*"\.\.\/public"/);
+  assert.match(packageJson, /@ssabrojs\/hwpxjs/);
+  assert.match(packageJson, /html2canvas/);
   assert.ok(template.length > 1000);
   assert.ok(font.length > 1000000);
 });
