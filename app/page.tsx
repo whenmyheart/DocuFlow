@@ -7,7 +7,12 @@ import {
   saveCloudDocument,
   type CloudDocument,
 } from "@/lib/firebase-documents";
-import { generateDocumentWithAi, searchDocumentsWithAi } from "@/lib/ai-review";
+import {
+  generateDocumentWithAi,
+  reviewGeneratedDocumentWithAi,
+  searchDocumentsWithAi,
+  type AiDocumentReview,
+} from "@/lib/ai-review";
 
 type DocumentType = {
   id: string;
@@ -229,6 +234,7 @@ const SAMPLE_VALUES: Record<string, Record<string, string>> = {
 
 type GenerationState = "idle" | "loading" | "complete" | "error";
 type SearchState = "idle" | "loading" | "complete" | "error";
+type ReviewState = "idle" | "loading" | "complete";
 
 type DraftBlock = {
   sourceIndex: number;
@@ -285,6 +291,79 @@ function formatSavedAt(savedAt: number) {
   return new Date(savedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[character] ?? character);
+}
+
+function buildExportHtml(text: string) {
+  const blocks = createDraftBlocks(text);
+  const body = blocks.map((block) => {
+    if (block.kind === "title") return `<h1>${escapeHtml(block.text)}</h1>`;
+    if (block.kind === "heading") return `<h2>${escapeHtml(block.text)}</h2>`;
+    if (block.kind === "information") return `<div class="info"><strong>${escapeHtml(block.label ?? "")}</strong><span>${escapeHtml(block.value ?? "")}</span></div>`;
+    if (block.kind === "bullet") return `<p class="bullet">• ${escapeHtml(block.text)}</p>`;
+    if (block.kind === "important") return `<p class="important">${escapeHtml(block.text)}</p>`;
+    return `<p>${escapeHtml(block.text)}</p>`;
+  }).join("");
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#17241d;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.8}h1{margin:0 0 34px;padding-bottom:20px;border-bottom:3px solid #11623c;color:#0a492c;font-size:30px}h2{margin:30px 0 12px;color:#11623c;font-size:19px}p{margin:0 0 16px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #ccd9d1;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#e7f1ea}.important{padding:12px 14px;border-left:4px solid #11623c;background:#e7f1ea;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
+}
+
+function downloadFile(content: BlobPart[], type: string, fileName: string) {
+  const url = URL.createObjectURL(new Blob(content, { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function safeDocumentName(text: string) {
+  return (text.split(/\r?\n/).find((line) => line.trim()) || "DocuFlow 문서")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .trim()
+    .slice(0, 60);
+}
+
+function encodeRtf(value: string) {
+  return Array.from(value).map((character) => {
+    if (character === "\\" || character === "{" || character === "}") return `\\${character}`;
+    if (character === "\n") return "\\par\n";
+    const code = character.charCodeAt(0);
+    if (code < 128) return character;
+    return `\\u${code > 32767 ? code - 65536 : code}?`;
+  }).join("");
+}
+
+function createBasicReview(documentType: DocumentType, values: Record<string, string>, text: string): AiDocumentReview {
+  const issues: AiDocumentReview["issues"] = [];
+  if (text.trim().length < 80) {
+    issues.push({ level: "warning", title: "본문 내용이 짧습니다", detail: "배포 목적과 이용 방법을 충분히 이해하기 어려울 수 있습니다.", suggestion: "대상, 목적, 기간과 다음 행동을 확인해 주세요." });
+  }
+  const contact = values.contact?.trim();
+  if (contact && !text.includes(contact)) {
+    issues.push({ level: "error", title: "문의처가 본문에서 확인되지 않습니다", detail: "입력한 문의처가 생성 문서에 그대로 포함되지 않았습니다.", suggestion: `문의처 '${contact}'를 본문에 추가해 주세요.` });
+  }
+  if (documentType.id === "application") {
+    const requestedFields = (values.collectionFields || "").split(/[,，\n]/).map((field) => field.trim()).filter(Boolean);
+    const missingFields = requestedFields.filter((field) => !text.includes(field));
+    if (missingFields.length) {
+      issues.push({ level: "error", title: "신청자 작성 항목이 빠졌습니다", detail: `${missingFields.join(", ")} 항목이 생성된 양식에서 확인되지 않습니다.`, suggestion: "누락된 항목의 빈 작성란을 추가해 주세요." });
+    }
+  }
+  return {
+    summary: issues.length ? `기본 검수에서 ${issues.length}개의 확인 항목을 찾았습니다.` : "AI 연결이 원활하지 않아 기본 검수를 실행했습니다. 입력 정보 기준으로 눈에 띄는 누락은 없습니다.",
+    issues,
+  };
+}
+
 function createBasicDraft(documentType: DocumentType, values: Record<string, string>) {
   if (documentType.id === "application") {
     const requestedFields = (values.collectionFields || "신청자 정보, 신청 내용")
@@ -339,6 +418,9 @@ export default function Home() {
   const [generationSummary, setGenerationSummary] = useState("");
   const [generationState, setGenerationState] = useState<GenerationState>("idle");
   const [message, setMessage] = useState("");
+  const [reviewState, setReviewState] = useState<ReviewState>("idle");
+  const [reviewResult, setReviewResult] = useState<AiDocumentReview | null>(null);
+  const [documentActionMessage, setDocumentActionMessage] = useState("");
   const [savedDocuments, setSavedDocuments] = useState<CloudDocument[]>([]);
   const [storageMessage, setStorageMessage] = useState("저장 목록을 불러오는 중입니다.");
   const [searchQuery, setSearchQuery] = useState("");
@@ -416,6 +498,9 @@ export default function Home() {
     setGenerationSummary("");
     setGenerationState("idle");
     setMessage("");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
     window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
@@ -432,6 +517,9 @@ export default function Home() {
     setGenerationSummary("");
     setGenerationState("idle");
     setMessage("가상 예시 내용을 입력했습니다. 필요한 항목만 수정해 주세요.");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
   };
 
   const generate = async () => {
@@ -445,6 +533,9 @@ export default function Home() {
     setGenerationState("loading");
     setGenerationSummary("");
     setMessage("");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
     try {
       const result = await generateDocumentWithAi({
         documentType: selectedType.name,
@@ -463,6 +554,66 @@ export default function Home() {
       setGenerationState("complete");
       setMessage("AI 연결에 실패해 기본 초안을 표시했습니다. 입력 내용은 그대로 유지됩니다.");
       window.requestAnimationFrame(() => resultRef.current?.focus());
+    }
+  };
+
+  const updateGeneratedDocument = (value: string) => {
+    setGeneratedText(value);
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
+  };
+
+  const copyGeneratedDocument = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedText);
+      setDocumentActionMessage("작성된 초안을 클립보드에 복사했습니다.");
+    } catch {
+      setDocumentActionMessage("복사하지 못했습니다. 문서 내용을 선택해 직접 복사해 주세요.");
+    }
+  };
+
+  const downloadWordDocument = () => {
+    downloadFile(["\ufeff", buildExportHtml(generatedText)], "application/msword;charset=utf-8", `${safeDocumentName(generatedText)}.doc`);
+    setDocumentActionMessage("Word 문서를 내려받았습니다.");
+  };
+
+  const downloadHangulDocument = () => {
+    const [title = "DocuFlow 문서", ...body] = generatedText.split(/\r?\n/);
+    const rtf = `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Malgun Gothic;}}\\uc1\\f0\\fs32\\b ${encodeRtf(title)}\\b0\\par\\par\\fs22 ${encodeRtf(body.join("\n"))}}`;
+    downloadFile([rtf], "application/rtf;charset=utf-8", `${safeDocumentName(generatedText)}_한글용.rtf`);
+    setDocumentActionMessage("한글에서 열어 편집할 수 있는 RTF 문서를 내려받았습니다.");
+  };
+
+  const printGeneratedDocument = () => {
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      setDocumentActionMessage("인쇄 창을 열지 못했습니다. 브라우저의 팝업 허용 여부를 확인해 주세요.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(buildExportHtml(generatedText));
+    printWindow.document.close();
+    window.setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
+    setDocumentActionMessage("인쇄 창에서 대상을 'PDF로 저장'으로 선택해 주세요.");
+  };
+
+  const reviewGeneratedDocument = async () => {
+    if (!selectedType || !generatedText.trim()) return;
+    setReviewState("loading");
+    setReviewResult(null);
+    setDocumentActionMessage("");
+    try {
+      const result = await reviewGeneratedDocumentWithAi({ documentType: selectedType.name, text: generatedText });
+      setReviewResult(result);
+    } catch (error) {
+      console.error("AI document review failed", error);
+      setReviewResult(createBasicReview(selectedType, fieldValues, generatedText));
+    } finally {
+      setReviewState("complete");
     }
   };
 
@@ -486,6 +637,9 @@ export default function Home() {
     setGeneratedText(document.text);
     setGenerationSummary("저장했던 문서를 불러왔습니다. 내용을 바로 수정할 수 있습니다.");
     setGenerationState("complete");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
     window.requestAnimationFrame(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       resultRef.current?.focus();
@@ -510,6 +664,9 @@ export default function Home() {
     setGenerationSummary("");
     setGenerationState("idle");
     setMessage("");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -608,7 +765,37 @@ export default function Home() {
               <div className="result-complete">
                 <div className="complete-banner"><span>✓</span><div><strong>초안 작성 완료</strong><p>{generationSummary}</p></div></div>
                 <div className="draft-label">생성된 문서 <small>제목이나 문장을 눌러 직접 수정할 수 있습니다.</small></div>
-                <DraftEditor text={generatedText} onChange={setGeneratedText} editorRef={resultRef} />
+                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} />
+                <div className="draft-tools" aria-label="문서 복사 및 내려받기">
+                  <button type="button" onClick={copyGeneratedDocument}>복사</button>
+                  <button type="button" onClick={downloadWordDocument}>Word</button>
+                  <button type="button" onClick={printGeneratedDocument}>PDF</button>
+                  <button type="button" onClick={downloadHangulDocument}>한글용</button>
+                </div>
+                {documentActionMessage && <p className="document-action-message" role="status">{documentActionMessage}</p>}
+                <button className="review-button" type="button" onClick={reviewGeneratedDocument} disabled={reviewState === "loading"}>
+                  <span>{reviewState === "loading" ? "AI가 초안을 검수하고 있습니다" : "AI 검수하기"}</span>
+                  <b aria-hidden="true">{reviewState === "loading" ? "…" : "✦"}</b>
+                </button>
+                {reviewState === "complete" && reviewResult && (
+                  <section className={`review-result ${reviewResult.issues.length ? "has-issues" : "clear"}`} aria-labelledby="review-result-heading">
+                    <div className="review-summary">
+                      <span aria-hidden="true">{reviewResult.issues.length ? "!" : "✓"}</span>
+                      <div><strong id="review-result-heading">검수 결과</strong><p>{reviewResult.summary}</p></div>
+                    </div>
+                    {reviewResult.issues.length > 0 && (
+                      <div className="review-issues">
+                        {reviewResult.issues.map((issue, index) => (
+                          <article className={`review-issue ${issue.level}`} key={`${issue.title}-${index}`}>
+                            <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{issue.title}</strong></div>
+                            <p>{issue.detail}</p>
+                            {issue.suggestion && <small><b>수정 제안</b>{issue.suggestion}</small>}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
                 <div className="result-actions">
                   <button className="save-button" type="button" onClick={saveGeneratedDocument}>목록에 저장</button>
                   <button type="button" onClick={generate}>다시 작성</button>

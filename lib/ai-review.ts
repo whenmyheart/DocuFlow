@@ -12,6 +12,18 @@ export type AiGeneratedDocument = {
   summary: string;
 };
 
+export type AiReviewIssue = {
+  level: "error" | "warning" | "suggestion";
+  title: string;
+  detail: string;
+  suggestion: string;
+};
+
+export type AiDocumentReview = {
+  summary: string;
+  issues: AiReviewIssue[];
+};
+
 export type SearchableDocument = {
   id: string;
   title: string;
@@ -71,6 +83,44 @@ const searchModel = getGenerativeModel(ai, {
       required: ["documentIds"],
       properties: {
         documentIds: { type: "array", maxItems: 20, items: { type: "string" } },
+      },
+    },
+  },
+});
+
+const reviewModel = getGenerativeModel(ai, {
+  model: "gemini-3.1-flash-lite",
+  systemInstruction: [
+    "당신은 배포 직전의 행정 문서를 검수하는 전문 편집자입니다.",
+    "문서 목적에 필요한 정보의 누락, 서로 충돌하는 내용, 날짜·연락처·제출 방법의 불명확성, 오해하기 쉬운 표현을 확인하세요.",
+    "신청서 양식의 빈칸은 신청자가 작성할 영역이므로 누락으로 판단하지 말고, 필요한 작성 항목 자체가 빠졌는지 확인하세요.",
+    "문서에 없는 사실을 추정하지 말고, 최대 6개의 중요한 문제만 반환하세요.",
+  ].join("\n"),
+  generationConfig: {
+    temperature: 0.1,
+    maxOutputTokens: 2048,
+    responseMimeType: "application/json",
+    responseJsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "issues"],
+      properties: {
+        summary: { type: "string" },
+        issues: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["level", "title", "detail", "suggestion"],
+            properties: {
+              level: { type: "string" },
+              title: { type: "string" },
+              detail: { type: "string" },
+              suggestion: { type: "string" },
+            },
+          },
+        },
       },
     },
   },
@@ -145,4 +195,37 @@ export async function searchDocumentsWithAi(query: string, documents: Searchable
   return Array.isArray(parsed.documentIds)
     ? parsed.documentIds.filter((id): id is string => typeof id === "string" && validIds.has(id))
     : [];
+}
+
+export async function reviewGeneratedDocumentWithAi({
+  documentType,
+  text,
+}: {
+  documentType: string;
+  text: string;
+}): Promise<AiDocumentReview> {
+  const result = await reviewModel.generateContent([
+    `문서 종류: ${documentType}`,
+    "검수할 문서:",
+    text.trim().slice(0, 14_000),
+    "배포 전에 고쳐야 할 누락과 오류를 검수하세요. 문제가 없다면 issues를 빈 배열로 반환하세요.",
+  ].join("\n\n"));
+  const parsed = JSON.parse(result.response.text()) as { summary?: unknown; issues?: unknown };
+  const allowedLevels = new Set(["error", "warning", "suggestion"]);
+  const issues = Array.isArray(parsed.issues)
+    ? parsed.issues.slice(0, 6).flatMap((issue) => {
+        if (!issue || typeof issue !== "object") return [];
+        const record = issue as Record<string, unknown>;
+        const title = cleanText(record.title, 100);
+        const detail = cleanText(record.detail, 500);
+        if (!title || !detail) return [];
+        const level = allowedLevels.has(String(record.level)) ? String(record.level) as AiReviewIssue["level"] : "warning";
+        return [{ level, title, detail, suggestion: cleanText(record.suggestion, 500) }];
+      })
+    : [];
+
+  return {
+    summary: cleanText(parsed.summary, 300) || (issues.length ? `${issues.length}개의 검토 항목이 있습니다.` : "눈에 띄는 누락이나 오류가 없습니다."),
+    issues,
+  };
 }
