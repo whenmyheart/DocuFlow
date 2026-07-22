@@ -546,6 +546,22 @@ async function buildWordDocumentBlob({
       new TableCell({ width: { size: 7022, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(blankValues ? "" : item.value, { after: 0 })] }),
     ] })),
   });
+  const noticeInformationTable = (rows: Array<{ label: string; value: string }>) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [2260, 7492],
+    layout: TableLayoutType.FIXED,
+    borders,
+    rows: [
+      new TableRow({ tableHeader: true, cantSplit: true, height: { value: 600, rule: HeightRule.ATLEAST }, children: [
+        new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("구분", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
+        new TableCell({ width: { size: 7492, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("내용", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
+      ] }),
+      ...rows.map((item) => new TableRow({ cantSplit: true, height: { value: 620, rule: HeightRule.ATLEAST }, children: [
+        new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "EAF0F8", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
+        new TableCell({ width: { size: 7492, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.value, { after: 0 })] }),
+      ] })),
+    ],
+  });
   const approvalTable = new Table({
     width: { size: 3100, type: WidthType.DXA },
     columnWidths: [460, 660, 660, 660, 660],
@@ -569,7 +585,43 @@ async function buildWordDocumentBlob({
   const bodyParagraphs = narrative.map((block) => paragraph(block.text, { bold: block.kind === "heading" || block.kind === "important", size: block.kind === "heading" ? 22 : 20, after: 120 }));
   const children: Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> = [];
 
-  if (documentTypeId === "application") {
+  if (documentTypeId === "notice") {
+    const [introduction, ...remainingParagraphs] = bodyParagraphs;
+    children.push(
+      paragraph("공 지", { bold: true, size: 42, align: AlignmentType.CENTER, after: 340 }),
+      new Paragraph({
+        spacing: { after: 300, line: 300 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 10, color: "111111", space: 8 } },
+        children: [
+          new TextRun({ text: "제목:  ", bold: true, size: 23, font: "Malgun Gothic", color: "111111" }),
+          new TextRun({ text: title, bold: true, size: 23, font: "Malgun Gothic", color: "111111" }),
+        ],
+      }),
+    );
+    if (introduction) children.push(introduction);
+    children.push(
+      paragraph("- 다 음 -", { size: 22, align: AlignmentType.CENTER, after: 260 }),
+      new Paragraph({
+        spacing: { before: 100, after: 120, line: 320 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "111111", space: 6 } },
+        children: [
+          new TextRun({ text: "1.  ", bold: true, size: 24, font: "Malgun Gothic", color: "2563B8" }),
+          new TextRun({ text: "운영 내용 및 일정", bold: true, size: 24, font: "Malgun Gothic", color: "111111" }),
+        ],
+      }),
+    );
+    if (details.length) children.push(noticeInformationTable(details));
+    if (remainingParagraphs.length) {
+      children.push(new Paragraph({
+        spacing: { before: 280, after: 120, line: 320 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "111111", space: 6 } },
+        children: [
+          new TextRun({ text: `${details.length ? "2" : "1"}.  `, bold: true, size: 24, font: "Malgun Gothic", color: "2563B8" }),
+          new TextRun({ text: "상세 안내", bold: true, size: 24, font: "Malgun Gothic", color: "111111" }),
+        ],
+      }), ...remainingParagraphs);
+    }
+  } else if (documentTypeId === "application") {
     const collection = details.find((detail) => /받을 정보|기재 항목/.test(detail.label));
     const formItems = collection?.value.split(/[,，/]/).map((item) => item.trim()).filter(Boolean) ?? [];
     const guidanceRows = details.filter((detail) => detail !== collection);

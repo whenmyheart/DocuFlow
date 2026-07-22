@@ -114,6 +114,9 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /width: 11906, height: 16838/);
   assert.match(pageSource, /margin: \{ top: 1134, right: 1077, bottom: 1134, left: 1077/);
   assert.match(pageSource, /TableLayoutType\.FIXED/);
+  assert.match(pageSource, /documentTypeId === "notice"/);
+  assert.match(pageSource, /noticeInformationTable/);
+  assert.match(pageSource, /운영 내용 및 일정/);
   assert.ok(template.length > 1000);
   assert.ok(font.length > 1000000);
 });
