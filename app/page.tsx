@@ -243,6 +243,12 @@ const EXPORT_FORMAT_LABELS: Record<ExportPreviewFormat, string> = {
   hwpx: "한글(HWPX)",
 };
 
+const EXPORT_FORMAT_DESCRIPTIONS: Record<ExportPreviewFormat, string> = {
+  word: "파란색 제목과 선명한 정보 표를 사용한 업무 문서 스타일",
+  pdf: "배포와 인쇄에 적합한 절제된 녹색 강조 스타일",
+  hwpx: "명조 계열 글꼴과 흑백 구성을 사용한 공공문서 스타일",
+};
+
 type DraftBlock = {
   sourceIndex: number;
   kind: "title" | "heading" | "information" | "bullet" | "important" | "body";
@@ -334,7 +340,7 @@ function buildExportHtml(text: string) {
     if (block.kind === "important") return `<p class="important">${escapeHtml(block.text)}</p>`;
     return `<p>${escapeHtml(block.text)}</p>`;
   }).join("");
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#17241d;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.8}h1{margin:0 0 34px;padding-bottom:20px;border-bottom:3px solid #11623c;color:#0a492c;font-size:30px}h2{margin:30px 0 12px;color:#11623c;font-size:19px}p{margin:0 0 16px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #ccd9d1;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#e7f1ea}.important{padding:12px 14px;border-left:4px solid #11623c;background:#e7f1ea;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#1f2937;font-family:Aptos,"Malgun Gothic",Arial,sans-serif;line-height:1.75}h1{margin:0 0 34px;padding-bottom:18px;border-bottom:3px solid #4472c4;color:#1f4e79;font-size:29px}h2{margin:28px 0 11px;color:#2f5597;font-size:18px}p{margin:0 0 15px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #b4c6e7;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#d9e2f3;color:#1f4e79}.important{padding:12px 14px;border-left:4px solid #4472c4;background:#eef3f9;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
 }
 
 function downloadFile(content: BlobPart[], type: string, fileName: string) {
@@ -961,6 +967,7 @@ export default function Home() {
               <div>
                 <span>전체 화면 미리보기</span>
                 <h2 id="export-preview-heading">{EXPORT_FORMAT_LABELS[exportPreviewFormat]} 문서</h2>
+                <p>{EXPORT_FORMAT_DESCRIPTIONS[exportPreviewFormat]}</p>
               </div>
               <button type="button" onClick={() => setExportPreviewFormat(null)} aria-label="미리보기 닫기">×</button>
             </header>

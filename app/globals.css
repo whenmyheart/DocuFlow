@@ -178,6 +178,7 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .export-preview-header { padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #c8d5cd; background: white; }
 .export-preview-header span { color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
 .export-preview-header h2 { margin: 4px 0 0; font-size: 19px; }
+.export-preview-header p { margin: 4px 0 0; color: var(--muted); font-size: 9px; }
 .export-preview-header > button { width: 38px; height: 38px; border: 1px solid #c4d1c9; border-radius: 50%; background: white; color: var(--ink); font-size: 24px; line-height: 1; }
 .export-preview-tabs { padding: 10px 28px; display: flex; justify-content: center; gap: 7px; border-bottom: 1px solid #c8d5cd; background: #f8fbf9; }
 .export-preview-tabs button { min-width: 105px; min-height: 34px; padding: 0 15px; border: 1px solid #b7c8bd; border-radius: 6px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
@@ -192,6 +193,30 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .preview-information strong { background: var(--mint); color: var(--green); }
 .preview-bullet { padding-left: 4px; }
 .preview-important { padding: 12px 14px; border-left: 4px solid var(--green); background: var(--mint); font-weight: 700; }
+
+.export-preview-viewport.format-word { background: #e8edf5; }
+.format-word .export-preview-document { color: #1f2937; font-family: Aptos, "Malgun Gothic", Arial, sans-serif; line-height: 1.75; }
+.format-word .export-preview-document h1 { border-bottom-color: #4472c4; color: #1f4e79; font-size: 29px; letter-spacing: -.025em; }
+.format-word .export-preview-document h2 { color: #2f5597; font-size: 18px; }
+.format-word .preview-information { border-color: #b4c6e7; }
+.format-word .preview-information strong { background: #d9e2f3; color: #1f4e79; }
+.format-word .preview-important { border-left-color: #4472c4; background: #eef3f9; color: #1f3d68; }
+
+.export-preview-viewport.format-pdf { background: #e6eee9; }
+.format-pdf .export-preview-document { color: #17241d; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; }
+.format-pdf .export-preview-document h1 { border-bottom-color: #11623c; color: #0a492c; font-size: 30px; }
+.format-pdf .export-preview-document h2 { color: #11623c; }
+.format-pdf .preview-information strong { background: #e7f1ea; color: #11623c; }
+.format-pdf .preview-important { border-left-color: #11623c; background: #e7f1ea; }
+
+.export-preview-viewport.format-hwpx { background: #ecebe7; }
+.format-hwpx .export-preview-document { color: #171717; font-family: "함초롬바탕", "Batang", "바탕", serif; line-height: 1.9; }
+.format-hwpx .export-preview-document h1 { margin-bottom: 38px; padding-bottom: 16px; border-bottom: 4px double #2c2c2c; color: #111; font-size: 28px; text-align: center; letter-spacing: .02em; }
+.format-hwpx .export-preview-document h2 { margin-top: 32px; padding: 0 0 7px 9px; border-bottom: 1px solid #777; border-left: 4px solid #333; color: #111; font-size: 17px; }
+.format-hwpx .export-preview-document p { font-size: 13.5px; }
+.format-hwpx .preview-information { border-color: #999; }
+.format-hwpx .preview-information strong { border-right: 1px solid #999; background: #efefed; color: #111; }
+.format-hwpx .preview-important { border: 1px solid #aaa; border-left: 5px solid #333; background: #f4f4f2; color: #111; }
 .export-preview-shell > .export-preview-actions { padding: 13px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid #c8d5cd; background: white; color: var(--muted); text-align: left; }
 .export-preview-actions p { margin: 0; font-size: 9px; }
 .export-preview-actions > div { display: flex; gap: 8px; }
