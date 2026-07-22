@@ -41,7 +41,7 @@ const systemInstruction = [
 
 const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });
 const model = getGenerativeModel(ai, {
-  model: "gemini-3.5-flash",
+  model: "gemini-3.1-flash-lite",
   systemInstruction,
   generationConfig: {
     temperature: 0.35,
@@ -52,7 +52,7 @@ const model = getGenerativeModel(ai, {
 });
 
 const searchModel = getGenerativeModel(ai, {
-  model: "gemini-3.5-flash",
+  model: "gemini-3.1-flash-lite",
   systemInstruction: [
     "당신은 저장된 행정 문서를 찾아주는 의미 기반 검색 도우미입니다.",
     "검색어가 문서에 그대로 포함되지 않아도 주제, 목적, 대상, 업무 맥락이 관련되면 결과에 포함하세요.",
