@@ -122,7 +122,10 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /documentTypeId === "official"/);
   assert.match(pageSource, /noticeInformationTable/);
   assert.match(pageSource, /columnWidths: \[pageWidth\]/);
-  assert.match(pageSource, /columnWidths: \[6652, 460, 660, 660, 660, 660\]/);
+  assert.match(pageSource, /alignment: AlignmentType\.RIGHT/);
+  assert.match(pageSource, /columnWidths: \[460, 660, 660, 660, 660\]/);
+  assert.doesNotMatch(pageSource, /columnWidths: \[6652, 460, 660, 660, 660, 660\]/);
+  assert.doesNotMatch(pageSource, /children\.push\(sectionHeading\("확인 및 기타 사항"\), \.\.\.bodyParagraphs\)/);
   assert.match(pageSource, /subjectTable/);
   assert.match(pageSource, /운영 내용 및 일정/);
   const cssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");

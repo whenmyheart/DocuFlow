@@ -320,10 +320,10 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     </tr></tbody></table>
   );
   const titleWithApproval = (title: string) => (
-    <table className="template-title-with-approval" role="presentation"><colgroup><col className="template-title-column" /><col className="template-approval-column" /></colgroup><tbody><tr>
-      <td className="template-title-cell"><h1>{title}</h1></td>
-      <td className="template-approval-cell">{approvalBox}</td>
-    </tr></tbody></table>
+    <header className="template-title-with-approval">
+      <div className="template-approval-cell">{approvalBox}</div>
+      <h1>{title}</h1>
+    </header>
   );
   const detailRows = (rows = details) => (
     <table className="template-table"><tbody>
@@ -376,7 +376,6 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
             {(formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((item) => <tr key={item}><th>{item}</th><td aria-label={`${item} 작성란`} /></tr>)}
           </tbody></table>
         </section>
-        {narrativeBlocks.length > 0 && <section className="template-writing-area"><h2>확인 및 기타 사항</h2>{narrativeBlocks.map(renderBlock)}</section>}
       </article>
     );
   }
@@ -518,7 +517,7 @@ async function buildWordDocumentBlob({
   const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
   const borders = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder, insideHorizontal: lineBorder, insideVertical: lineBorder };
   const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder };
-  const cellMargins = { top: 110, bottom: 110, left: 150, right: 150 };
+  const cellMargins = { top: 80, bottom: 80, left: 140, right: 140 };
   const paragraph = (value: string, options: { bold?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number } = {}) => new Paragraph({
     alignment: options.align,
     spacing: { after: options.after ?? 80, line: 300 },
@@ -529,7 +528,7 @@ async function buildWordDocumentBlob({
     columnWidths: [pageWidth],
     layout: TableLayoutType.FIXED,
     borders,
-    rows: [new TableRow({ cantSplit: true, height: { value: 540, rule: HeightRule.ATLEAST }, children: [new TableCell({
+    rows: [new TableRow({ cantSplit: true, height: { value: 460, rule: HeightRule.ATLEAST }, children: [new TableCell({
       width: { size: pageWidth, type: WidthType.DXA },
       shading: { type: ShadingType.CLEAR, fill: "E7E7E7", color: "auto" },
       margins: cellMargins,
@@ -542,7 +541,7 @@ async function buildWordDocumentBlob({
     columnWidths: [2730, 7022],
     layout: TableLayoutType.FIXED,
     borders,
-    rows: rows.map((item) => new TableRow({ cantSplit: true, height: { value: blankValues ? 760 : 620, rule: HeightRule.ATLEAST }, children: [
+    rows: rows.map((item) => new TableRow({ cantSplit: true, height: { value: blankValues ? 600 : 520, rule: HeightRule.ATLEAST }, children: [
       new TableCell({ width: { size: 2730, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: blankValues ? "F0F0F0" : "E7E7E7", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
       new TableCell({ width: { size: 7022, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(blankValues ? "" : item.value, { after: 0 })] }),
     ] })),
@@ -564,22 +563,25 @@ async function buildWordDocumentBlob({
     ],
   });
   const approvalBorder = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder };
-  const titleWithApproval = (value: string) => new Table({
-    width: { size: pageWidth, type: WidthType.DXA },
-    columnWidths: [6652, 460, 660, 660, 660, 660],
-    layout: TableLayoutType.FIXED,
-    borders: noBorders,
-    rows: [new TableRow({ cantSplit: true, children: [
-      new TableCell({ width: { size: 6652, type: WidthType.DXA }, borders: noBorders, margins: { top: 80, bottom: 220, left: 0, right: 240 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, size: 36, align: AlignmentType.CENTER, after: 0 })] }),
-      ...["결재", "담당", "과장", "부장", "이사"].map((label, index) => new TableCell({
-        width: { size: index === 0 ? 460 : 660, type: WidthType.DXA },
-        borders: approvalBorder,
-        margins: { top: 70, bottom: 70, left: 35, right: 35 },
-        verticalAlign: VerticalAlign.CENTER,
-        children: [paragraph(label, { size: 15, align: AlignmentType.CENTER, after: 0 })],
-      })),
-    ] })],
-  });
+  const titleWithApproval = (value: string): Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> => [
+    new Table({
+      width: { size: 3100, type: WidthType.DXA },
+      columnWidths: [460, 660, 660, 660, 660],
+      layout: TableLayoutType.FIXED,
+      alignment: AlignmentType.RIGHT,
+      borders: noBorders,
+      rows: [new TableRow({ cantSplit: true, height: { value: 520, rule: HeightRule.ATLEAST }, children:
+        ["결재", "담당", "과장", "부장", "이사"].map((label, index) => new TableCell({
+          width: { size: index === 0 ? 460 : 660, type: WidthType.DXA },
+          borders: approvalBorder,
+          margins: { top: 55, bottom: 55, left: 35, right: 35 },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [paragraph(label, { size: 15, align: AlignmentType.CENTER, after: 0 })],
+        })),
+      })],
+    }),
+    paragraph(value, { bold: true, size: 36, align: AlignmentType.CENTER, after: 220 }),
+  ];
   const subjectTable = (label: string, value: string) => new Table({
     width: { size: pageWidth, type: WidthType.DXA },
     columnWidths: [1800, 7952],
@@ -636,10 +638,9 @@ async function buildWordDocumentBlob({
     const collection = details.find((detail) => /받을 정보|기재 항목/.test(detail.label));
     const formItems = collection?.value.split(/[,，/]/).map((item) => item.trim()).filter(Boolean) ?? [];
     const guidanceRows = details.filter((detail) => detail !== collection);
-    children.push(titleWithApproval(title));
+    children.push(...titleWithApproval(title));
     if (guidanceRows.length) children.push(sectionHeading("신청 안내"), informationTable(guidanceRows));
     children.push(sectionHeading("신청자 작성란"), informationTable((formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((label) => ({ label, value: "" })), true));
-    if (bodyParagraphs.length) children.push(sectionHeading("확인 및 기타 사항"), ...bodyParagraphs);
   } else if (documentTypeId === "proposal") {
     children.push(paragraph(title, { bold: true, size: 38, align: AlignmentType.CENTER, after: 300 }));
     if (details.length) children.push(informationTable(details.slice(0, 3)));
@@ -648,7 +649,7 @@ async function buildWordDocumentBlob({
   } else if (documentTypeId === "report" || documentTypeId === "minutes") {
     const isMinutes = documentTypeId === "minutes";
     const metadataCount = isMinutes ? 4 : 3;
-    children.push(titleWithApproval(isMinutes ? "회의록" : "보고서"), subjectTable(isMinutes ? "회의명" : "제목", title));
+    children.push(...titleWithApproval(isMinutes ? "회의록" : "보고서"), subjectTable(isMinutes ? "회의명" : "제목", title));
     if (details.length) children.push(informationTable(details.slice(0, metadataCount)));
     if (bodyParagraphs.length) children.push(sectionHeading(isMinutes ? "회의 내용" : "보고 내용"), ...bodyParagraphs);
     details.slice(metadataCount).forEach((detail) => children.push(sectionHeading(detail.label), paragraph(detail.value, { after: 180 })));
@@ -663,7 +664,7 @@ async function buildWordDocumentBlob({
     if (bodyParagraphs.length) children.push(sectionHeading("행사 안내"), ...bodyParagraphs);
     if (remaining.length) children.push(sectionHeading("참여 정보"), informationTable(remaining));
   } else if (documentTypeId === "official") {
-    children.push(titleWithApproval("업무 협조공문"));
+    children.push(...titleWithApproval("업무 협조공문"));
     if (details.length) children.push(informationTable(details));
     children.push(subjectTable("제목", title));
     if (bodyParagraphs.length) children.push(sectionHeading("협조 요청 내용"), ...bodyParagraphs);
