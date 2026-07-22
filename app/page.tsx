@@ -521,6 +521,18 @@ export default function Home() {
     setDocumentActionMessage("");
   };
 
+  const clearDocument = () => {
+    setFieldValues({});
+    setAdditionalRequest("");
+    setGeneratedText("");
+    setGenerationSummary("");
+    setGenerationState("idle");
+    setMessage("입력 내용과 생성된 초안을 지웠습니다.");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
+  };
+
   const generate = async () => {
     if (!selectedType) return;
     const filledFields = selectedType.fields.filter((field) => fieldValues[field.id]?.trim());
@@ -773,6 +785,7 @@ export default function Home() {
               <div><span>02</span><p>정보 입력</p></div>
               <div className="panel-head-actions">
                 <button className="sample-fill-button" type="button" onClick={fillSample}>✦ 예시 내용 채우기</button>
+                <button className="clear-document-button" type="button" onClick={clearDocument}>본문 지우기</button>
                 <button type="button" onClick={startOver}>문서 종류 다시 선택</button>
               </div>
             </div>

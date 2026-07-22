@@ -50,6 +50,8 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /application\/hwp\+zip/);
   assert.match(page, /NanumGothic-Regular\.ttf/);
   assert.match(page, /AI 검수하기/);
+  assert.match(page, /본문 지우기/);
+  assert.match(page, /clearDocument/);
   assert.match(ai, /GoogleAIBackend/);
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
   assert.match(ai, /입력된 항목이 하나뿐이어도/);

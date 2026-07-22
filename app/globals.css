@@ -65,7 +65,9 @@ button:disabled { cursor: wait; opacity: .72; }
 .panel-head-actions { display: flex; align-items: center; gap: 9px; }
 .panel-head-actions button { min-height: 32px; padding: 0 10px; border: 1px solid #b8cbbf; border-radius: 6px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
 .panel-head-actions .sample-fill-button { border-color: var(--green); background: var(--mint); }
+.panel-head-actions .clear-document-button { border-color: #d8c5bd; color: #8a422c; }
 .panel-head-actions button:hover { border-color: var(--green); background: #f2f8f4; }
+.panel-head-actions .clear-document-button:hover { border-color: #a95538; background: #fff7f3; }
 .input-panel > h2 { margin: 28px 0 8px; font-size: 25px; letter-spacing: -.035em; }
 .panel-description { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .progress-row { margin: 27px 0 13px; display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
