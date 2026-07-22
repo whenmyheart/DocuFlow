@@ -135,7 +135,7 @@ function cleanText(value: unknown, maxLength: number) {
 function improveDocumentSpacing(value: string) {
   const normalized = value
     .replace(/\r\n?/g, "\n")
-    .replace(/([.!?。])\s+(?=(?:[-•]|\d+[.)])\s*)/g, "$1\n")
+    .replace(/([가-힣][.!?。])\s+(?=(?:[-•]|\d+[.)])\s*)/g, "$1\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n");
 
@@ -148,7 +148,8 @@ function improveDocumentSpacing(value: string) {
 
   return separatedLines.flatMap((line) => {
     if (/^(?:[-•]|\d+[.)])\s*/.test(line) || /^[^:：]{1,20}[:：]/.test(line)) return [line];
-    const sentences = line.split(/(?<=[.!?。])\s+/).filter(Boolean);
+    // 날짜의 점(예: 2026. 7. 27.)은 문장 끝이 아니므로 한글 문장 뒤에서만 나눕니다.
+    const sentences = line.split(/(?<=[가-힣][.!?。])\s+/).filter(Boolean);
     if (sentences.length < 2 || (sentences.length < 3 && line.length < 135)) return [line];
 
     const paragraphs: string[] = [];

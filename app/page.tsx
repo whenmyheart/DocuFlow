@@ -300,7 +300,7 @@ function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (v
   );
 }
 
-function ExportPreviewDocument({ text, details }: { text: string; details: Array<{ label: string; value: string }> }) {
+function ExportPreviewDocument({ text, details, documentTypeId }: { text: string; details: Array<{ label: string; value: string }>; documentTypeId: string }) {
   const blocks = createDraftBlocks(text);
   const [titleBlock, ...bodyBlocks] = blocks;
   const renderBlock = (block: DraftBlock) => {
@@ -311,6 +311,38 @@ function ExportPreviewDocument({ text, details }: { text: string; details: Array
     if (block.kind === "important") return <p className="preview-important" key={block.sourceIndex}>{block.text}</p>;
     return <p key={block.sourceIndex}>{block.text}</p>;
   };
+
+  if (documentTypeId === "notice") {
+    const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
+    const introduction = introductionIndex >= 0 ? bodyBlocks[introductionIndex] : null;
+    const detailBlocks = bodyBlocks.filter((block, index) => index !== introductionIndex && block.kind !== "information");
+
+    return (
+      <article className="export-preview-document official-notice-preview" aria-label="내보낼 문서 미리보기">
+        <header className="official-notice-header">
+          <h1>공 지</h1>
+          <p className="official-notice-subject"><strong>제목:</strong> {titleBlock?.text ?? "공지"}</p>
+        </header>
+        {introduction && <div className="official-notice-intro">{renderBlock(introduction)}</div>}
+        <p className="official-notice-divider">- 다 음 -</p>
+        {details.length > 0 && (
+          <section className="preview-overview official-notice-section" aria-labelledby="preview-overview-heading">
+            <h2 id="preview-overview-heading"><span>1.</span> 운영 내용 및 일정</h2>
+            <div className="official-notice-table-head" aria-hidden="true"><strong>구분</strong><strong>내용</strong></div>
+            <div className="preview-overview-grid">
+              {details.map((detail) => <div className="preview-information" key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></div>)}
+            </div>
+          </section>
+        )}
+        {detailBlocks.length > 0 && (
+          <section className="official-notice-section">
+            <h2><span>{details.length > 0 ? "2." : "1."}</span> 상세 안내</h2>
+            {detailBlocks.map(renderBlock)}
+          </section>
+        )}
+      </article>
+    );
+  }
 
   return (
     <article className="export-preview-document" aria-label="내보낼 문서 미리보기">
@@ -1012,7 +1044,7 @@ export default function Home() {
               <button type="button" className={exportPreviewFormat === "hwpx" ? "active" : ""} onClick={() => setExportPreviewFormat("hwpx")}>한글(HWPX)</button>
             </nav>
             <div className={`export-preview-viewport format-${exportPreviewFormat}`}>
-              <ExportPreviewDocument text={generatedText} details={exportPreviewDetails} />
+              <ExportPreviewDocument text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} />
             </div>
             <footer className="export-preview-actions">
               <p>실제 변환 결과는 사용하는 프로그램에 따라 글꼴과 페이지 나눔이 조금 달라질 수 있습니다.</p>

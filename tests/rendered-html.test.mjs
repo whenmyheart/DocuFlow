@@ -56,6 +56,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /공공문서 스타일/);
   assert.match(page, /문서 주요 정보/);
   assert.match(page, /exportPreviewDetails/);
+  assert.match(page, /official-notice-preview/);
+  assert.match(page, /공 지/);
+  assert.match(page, /운영 내용 및 일정/);
   assert.match(ai, /항목명: 내용/);
   assert.match(page, /AI 검수하기/);
   assert.match(page, /본문 지우기/);
@@ -67,7 +70,7 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(ai, /sentenceCount >= 2/);
   assert.match(ai, /신청자가 빈칸을 직접 작성해 제출/);
   assert.match(ai, /improveDocumentSpacing/);
-  assert.ok(ai.includes("(?<=[.!?。])"));
+  assert.ok(ai.includes("(?<=[가-힣][.!?。])"));
   assert.match(ai, /reviewGeneratedDocumentWithAi/);
   assert.match(ai, /신청서 양식의 빈칸은 신청자가 작성할 영역/);
   assert.match(ai, /responseJsonSchema/);
