@@ -235,6 +235,13 @@ const SAMPLE_VALUES: Record<string, Record<string, string>> = {
 type GenerationState = "idle" | "loading" | "complete" | "error";
 type SearchState = "idle" | "loading" | "complete" | "error";
 type ReviewState = "idle" | "loading" | "complete";
+type ExportPreviewFormat = "word" | "pdf" | "hwpx";
+
+const EXPORT_FORMAT_LABELS: Record<ExportPreviewFormat, string> = {
+  word: "Word",
+  pdf: "PDF",
+  hwpx: "한글(HWPX)",
+};
 
 type DraftBlock = {
   sourceIndex: number;
@@ -284,6 +291,22 @@ function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (v
         return <p key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
       })}
     </div>
+  );
+}
+
+function ExportPreviewDocument({ text }: { text: string }) {
+  const blocks = createDraftBlocks(text);
+  return (
+    <article className="export-preview-document" aria-label="내보낼 문서 미리보기">
+      {blocks.map((block) => {
+        if (block.kind === "title") return <h1 key={block.sourceIndex}>{block.text}</h1>;
+        if (block.kind === "heading") return <h2 key={block.sourceIndex}>{block.text}</h2>;
+        if (block.kind === "information") return <div className="preview-information" key={block.sourceIndex}><strong>{block.label}</strong><span>{block.value}</span></div>;
+        if (block.kind === "bullet") return <p className="preview-bullet" key={block.sourceIndex}>• {block.text}</p>;
+        if (block.kind === "important") return <p className="preview-important" key={block.sourceIndex}>{block.text}</p>;
+        return <p key={block.sourceIndex}>{block.text}</p>;
+      })}
+    </article>
   );
 }
 
@@ -420,6 +443,7 @@ export default function Home() {
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [reviewResult, setReviewResult] = useState<AiDocumentReview | null>(null);
   const [documentActionMessage, setDocumentActionMessage] = useState("");
+  const [exportPreviewFormat, setExportPreviewFormat] = useState<ExportPreviewFormat | null>(null);
   const [savedDocuments, setSavedDocuments] = useState<CloudDocument[]>([]);
   const [storageMessage, setStorageMessage] = useState("저장 목록을 불러오는 중입니다.");
   const [searchQuery, setSearchQuery] = useState("");
@@ -442,6 +466,20 @@ export default function Home() {
       .catch((error) => active && setStorageMessage(getFirebaseMessage(error)));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!exportPreviewFormat) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExportPreviewFormat(null);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [exportPreviewFormat]);
 
   const directSearchDocuments = useMemo(() => {
     const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -587,6 +625,7 @@ export default function Home() {
   const downloadWordDocument = () => {
     downloadFile(["\ufeff", buildExportHtml(generatedText)], "application/msword;charset=utf-8", `${safeDocumentName(generatedText)}.doc`);
     setDocumentActionMessage("Word 문서를 내려받았습니다.");
+    setExportPreviewFormat(null);
   };
 
   const downloadHangulDocument = async () => {
@@ -619,6 +658,7 @@ export default function Home() {
       });
       downloadFile([hwpx], "application/hwp+zip", `${safeDocumentName(generatedText)}.hwpx`);
       setDocumentActionMessage("한글 HWPX 파일을 내려받았습니다.");
+      setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);
       setDocumentActionMessage("한글 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -661,10 +701,17 @@ export default function Home() {
       });
       pdf.save(`${safeDocumentName(generatedText)}.pdf`);
       setDocumentActionMessage("PDF 파일을 내려받았습니다.");
+      setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);
       setDocumentActionMessage("PDF 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
+  };
+
+  const downloadPreviewedDocument = () => {
+    if (exportPreviewFormat === "word") downloadWordDocument();
+    if (exportPreviewFormat === "pdf") void downloadPdfDocument();
+    if (exportPreviewFormat === "hwpx") void downloadHangulDocument();
   };
 
   const reviewGeneratedDocument = async () => {
@@ -835,9 +882,9 @@ export default function Home() {
                 <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} />
                 <div className="draft-tools" aria-label="문서 복사 및 내려받기">
                   <button type="button" onClick={copyGeneratedDocument}>복사</button>
-                  <button type="button" onClick={downloadWordDocument}>Word</button>
-                  <button type="button" onClick={downloadPdfDocument}>PDF</button>
-                  <button type="button" onClick={downloadHangulDocument}>한글(HWPX)</button>
+                  <button type="button" onClick={() => setExportPreviewFormat("word")} aria-haspopup="dialog">Word</button>
+                  <button type="button" onClick={() => setExportPreviewFormat("pdf")} aria-haspopup="dialog">PDF</button>
+                  <button type="button" onClick={() => setExportPreviewFormat("hwpx")} aria-haspopup="dialog">한글(HWPX)</button>
                 </div>
                 {documentActionMessage && <p className="document-action-message" role="status">{documentActionMessage}</p>}
                 <button className="review-button" type="button" onClick={reviewGeneratedDocument} disabled={reviewState === "loading"}>
@@ -898,6 +945,43 @@ export default function Home() {
           </div>
         ) : !storageMessage && <p className="no-documents">검색 결과가 없습니다.</p>}
       </section>
+
+      {exportPreviewFormat && (
+        <div
+          className="export-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="export-preview-heading"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setExportPreviewFormat(null);
+          }}
+        >
+          <section className="export-preview-shell">
+            <header className="export-preview-header">
+              <div>
+                <span>전체 화면 미리보기</span>
+                <h2 id="export-preview-heading">{EXPORT_FORMAT_LABELS[exportPreviewFormat]} 문서</h2>
+              </div>
+              <button type="button" onClick={() => setExportPreviewFormat(null)} aria-label="미리보기 닫기">×</button>
+            </header>
+            <nav className="export-preview-tabs" aria-label="미리볼 파일 형식">
+              <button type="button" className={exportPreviewFormat === "word" ? "active" : ""} onClick={() => setExportPreviewFormat("word")}>Word</button>
+              <button type="button" className={exportPreviewFormat === "pdf" ? "active" : ""} onClick={() => setExportPreviewFormat("pdf")}>PDF</button>
+              <button type="button" className={exportPreviewFormat === "hwpx" ? "active" : ""} onClick={() => setExportPreviewFormat("hwpx")}>한글(HWPX)</button>
+            </nav>
+            <div className={`export-preview-viewport format-${exportPreviewFormat}`}>
+              <ExportPreviewDocument text={generatedText} />
+            </div>
+            <footer className="export-preview-actions">
+              <p>실제 변환 결과는 사용하는 프로그램에 따라 글꼴과 페이지 나눔이 조금 달라질 수 있습니다.</p>
+              <div>
+                <button type="button" onClick={() => setExportPreviewFormat(null)}>돌아가기</button>
+                <button className="download-preview-button" type="button" onClick={downloadPreviewedDocument}>{EXPORT_FORMAT_LABELS[exportPreviewFormat]} 다운로드</button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
 
       <footer>DocuFlow · AI가 만든 문서는 배포 전 담당자가 최종 확인해 주세요.</footer>
     </main>

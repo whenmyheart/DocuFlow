@@ -49,6 +49,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /downloadPdfDocument/);
   assert.match(page, /application\/hwp\+zip/);
   assert.match(page, /NanumGothic-Regular\.ttf/);
+  assert.match(page, /전체 화면 미리보기/);
+  assert.match(page, /exportPreviewFormat/);
+  assert.match(page, /downloadPreviewedDocument/);
   assert.match(page, /AI 검수하기/);
   assert.match(page, /본문 지우기/);
   assert.match(page, /clearDocument/);
