@@ -45,6 +45,8 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /신청자 작성 항목/);
   assert.match(page, /copyGeneratedDocument/);
   assert.match(page, /downloadWordDocument/);
+  assert.match(page, /buildWordDocumentBlob/);
+  assert.match(page, /application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document/);
   assert.match(page, /downloadHangulDocument/);
   assert.match(page, /downloadPdfDocument/);
   assert.match(page, /application\/hwp\+zip/);
@@ -107,6 +109,11 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(config, /publicDir:\s*"\.\.\/public"/);
   assert.match(packageJson, /@ssabrojs\/hwpxjs/);
   assert.match(packageJson, /html2canvas/);
+  assert.match(packageJson, /"docx"/);
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(pageSource, /width: 11906, height: 16838/);
+  assert.match(pageSource, /margin: \{ top: 1134, right: 1077, bottom: 1134, left: 1077/);
+  assert.match(pageSource, /TableLayoutType\.FIXED/);
   assert.ok(template.length > 1000);
   assert.ok(font.length > 1000000);
 });

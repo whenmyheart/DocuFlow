@@ -319,6 +319,12 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
       <th>결재</th><td>담당</td><td>과장</td><td>부장</td><td>이사</td>
     </tr></tbody></table>
   );
+  const titleWithApproval = (title: string) => (
+    <table className="template-title-with-approval" role="presentation"><colgroup><col className="template-title-column" /><col className="template-approval-column" /></colgroup><tbody><tr>
+      <td className="template-title-cell"><h1>{title}</h1></td>
+      <td className="template-approval-cell">{approvalBox}</td>
+    </tr></tbody></table>
+  );
   const detailRows = (rows = details) => (
     <table className="template-table"><tbody>
       {rows.map((detail) => <tr className="template-table-row" key={detail.label}><th>{detail.label}</th><td>{detail.value}</td></tr>)}
@@ -363,7 +369,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     const guidanceRows = details.filter((detail) => detail !== collection);
     return (
       <article className="export-preview-document form-template application-template" aria-label="신청서 양식 미리보기">
-        <header className="template-title-with-approval"><h1>{documentTitle}</h1>{approvalBox}</header>
+        {titleWithApproval(documentTitle)}
         {guidanceRows.length > 0 && <section><h2>신청 안내</h2>{detailRows(guidanceRows)}</section>}
         <section><h2>신청자 작성란</h2>
           <table className="application-entry-grid"><tbody>
@@ -390,7 +396,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     const isMinutes = documentTypeId === "minutes";
     return (
       <article className={`export-preview-document form-template ${isMinutes ? "minutes-template" : "report-template"}`} aria-label={`${isMinutes ? "회의록" : "보고서"} 미리보기`}>
-        <header className="template-title-with-approval"><h1>{isMinutes ? "회 의 록" : "보 고 서"}</h1>{approvalBox}</header>
+        {titleWithApproval(isMinutes ? "회 의 록" : "보 고 서")}
         <table className="template-document-subject"><tbody><tr><th>{isMinutes ? "회의명" : "제목"}</th><td>{documentTitle}</td></tr></tbody></table>
         {detailRows(details.slice(0, isMinutes ? 4 : 3))}
         <section className="template-writing-area"><h2>{isMinutes ? "회의 내용" : "보고 내용"}</h2>{narrativeBlocks.map(renderBlock)}</section>
@@ -490,6 +496,103 @@ function getStyledPreviewMarkup() {
 
 function buildPreviewExportHtml(markup: string, title: string) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:20mm 19mm}html,body{margin:0;padding:0;background:#fff;color:#111}table{border-collapse:collapse}*{box-sizing:border-box}@media print{article{min-height:auto!important}}</style></head><body>${markup}</body></html>`;
+}
+
+async function buildWordDocumentBlob({
+  text,
+  title,
+  details,
+  documentTypeId,
+}: {
+  text: string;
+  title: string;
+  details: Array<{ label: string; value: string }>;
+  documentTypeId: string;
+}) {
+  const {
+    AlignmentType, BorderStyle, Document, HeightRule, Packer, Paragraph, ShadingType,
+    Table, TableCell, TableLayoutType, TableRow, TextRun, VerticalAlign, WidthType,
+  } = await import("docx");
+  const pageWidth = 9752;
+  const lineBorder = { style: BorderStyle.SINGLE, size: 4, color: "777777" };
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const borders = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder, insideHorizontal: lineBorder, insideVertical: lineBorder };
+  const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder };
+  const cellMargins = { top: 110, bottom: 110, left: 150, right: 150 };
+  const paragraph = (value: string, options: { bold?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number } = {}) => new Paragraph({
+    alignment: options.align,
+    spacing: { after: options.after ?? 80, line: 300 },
+    children: [new TextRun({ text: value, bold: options.bold, size: options.size ?? 20, font: "Malgun Gothic", color: "111111" })],
+  });
+  const sectionHeading = (value: string) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
+    borders,
+    rows: [new TableRow({ cantSplit: true, height: { value: 540, rule: HeightRule.ATLEAST }, children: [new TableCell({
+      width: { size: pageWidth, type: WidthType.DXA },
+      shading: { type: ShadingType.CLEAR, fill: "E7E7E7", color: "auto" },
+      margins: cellMargins,
+      verticalAlign: VerticalAlign.CENTER,
+      children: [paragraph(value, { bold: true, size: 22, align: AlignmentType.CENTER, after: 0 })],
+    })] })],
+  });
+  const informationTable = (rows: Array<{ label: string; value: string }>, blankValues = false) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [2730, 7022],
+    layout: TableLayoutType.FIXED,
+    borders,
+    rows: rows.map((item) => new TableRow({ cantSplit: true, height: { value: blankValues ? 760 : 620, rule: HeightRule.ATLEAST }, children: [
+      new TableCell({ width: { size: 2730, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: blankValues ? "F0F0F0" : "E7E7E7", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
+      new TableCell({ width: { size: 7022, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(blankValues ? "" : item.value, { after: 0 })] }),
+    ] })),
+  });
+  const approvalTable = new Table({
+    width: { size: 3100, type: WidthType.DXA },
+    columnWidths: [460, 660, 660, 660, 660],
+    layout: TableLayoutType.FIXED,
+    borders,
+    rows: [new TableRow({ cantSplit: true, height: { value: 610, rule: HeightRule.EXACT }, children: ["결재", "담당", "과장", "부장", "이사"].map((label) => new TableCell({ margins: { top: 60, bottom: 60, left: 40, right: 40 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(label, { size: 16, align: AlignmentType.CENTER, after: 0 })] })) })],
+  });
+  const titleWithApproval = (value: string) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [6352, 3400],
+    layout: TableLayoutType.FIXED,
+    borders: noBorders,
+    rows: [new TableRow({ cantSplit: true, children: [
+      new TableCell({ width: { size: 6352, type: WidthType.DXA }, borders: noBorders, margins: { top: 100, bottom: 220, left: 0, right: 260 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, size: 44, align: AlignmentType.CENTER, after: 0 })] }),
+      new TableCell({ width: { size: 3400, type: WidthType.DXA }, borders: noBorders, margins: { top: 0, bottom: 220, left: 150, right: 0 }, verticalAlign: VerticalAlign.TOP, children: [approvalTable, new Paragraph("")] }),
+    ] })],
+  });
+
+  const blocks = createDraftBlocks(text);
+  const narrative = blocks.slice(1).filter((block) => block.kind !== "information");
+  const bodyParagraphs = narrative.map((block) => paragraph(block.text, { bold: block.kind === "heading" || block.kind === "important", size: block.kind === "heading" ? 22 : 20, after: 120 }));
+  const children: Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> = [];
+
+  if (documentTypeId === "application") {
+    const collection = details.find((detail) => /받을 정보|기재 항목/.test(detail.label));
+    const formItems = collection?.value.split(/[,，/]/).map((item) => item.trim()).filter(Boolean) ?? [];
+    const guidanceRows = details.filter((detail) => detail !== collection);
+    children.push(titleWithApproval(title));
+    if (guidanceRows.length) children.push(sectionHeading("신청 안내"), informationTable(guidanceRows));
+    children.push(sectionHeading("신청자 작성란"), informationTable((formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((label) => ({ label, value: "" })), true));
+    if (bodyParagraphs.length) children.push(sectionHeading("확인 및 기타 사항"), ...bodyParagraphs);
+  } else {
+    children.push(paragraph(title, { bold: true, size: 34, align: AlignmentType.CENTER, after: 320 }));
+    if (details.length) children.push(sectionHeading("문서 주요 정보"), informationTable(details));
+    if (bodyParagraphs.length) children.push(sectionHeading("상세 내용"), ...bodyParagraphs);
+  }
+
+  const document = new Document({
+    creator: "DocuFlow",
+    title,
+    styles: { default: { document: { run: { font: "Malgun Gothic", size: 20, color: "111111" }, paragraph: { spacing: { line: 300, after: 80 } } } } },
+    sections: [{
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1077, bottom: 1134, left: 1077, header: 0, footer: 0, gutter: 0 } } },
+      children,
+    }],
+  });
+  return Packer.toBlob(document);
 }
 
 function downloadFile(content: BlobPart[], type: string, fileName: string) {
@@ -779,12 +882,13 @@ export default function Home() {
     }
   };
 
-  const downloadWordDocument = () => {
+  const downloadWordDocument = async () => {
+    setDocumentActionMessage("Word 문서를 만들고 있습니다.");
     try {
-      const markup = getStyledPreviewMarkup();
       const title = documentName.trim() || safeDocumentName(generatedText);
-      downloadFile(["\ufeff", buildPreviewExportHtml(markup, title)], "application/msword;charset=utf-8", `${safeDocumentName(title)}.doc`);
-      setDocumentActionMessage("미리보기 서식을 적용한 Word 문서를 내려받았습니다.");
+      const wordDocument = await buildWordDocumentBlob({ text: generatedText, title, details: exportPreviewDetails, documentTypeId: selectedTypeId });
+      downloadFile([wordDocument], "application/vnd.openxmlformats-officedocument.wordprocessingml.document", `${safeDocumentName(title)}.docx`);
+      setDocumentActionMessage("A4 크기와 고정 표 너비가 적용된 Word 문서를 내려받았습니다.");
       setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);
@@ -842,7 +946,7 @@ export default function Home() {
   };
 
   const downloadPreviewedDocument = () => {
-    if (exportPreviewFormat === "word") downloadWordDocument();
+    if (exportPreviewFormat === "word") void downloadWordDocument();
     if (exportPreviewFormat === "pdf") void downloadPdfDocument();
     if (exportPreviewFormat === "hwpx") void downloadHangulDocument();
   };
@@ -1140,7 +1244,7 @@ export default function Home() {
               <ExportPreviewDocument text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} />
             </div>
             <footer className="export-preview-actions">
-              <p>실제 변환 결과는 사용하는 프로그램에 따라 글꼴과 페이지 나눔이 조금 달라질 수 있습니다.</p>
+              <p>미리보기와 내려받는 파일은 모두 A4 크기와 동일한 여백을 사용합니다.</p>
               <div>
                 <button type="button" onClick={() => setExportPreviewFormat(null)}>돌아가기</button>
                 <button className="download-preview-button" type="button" onClick={downloadPreviewedDocument}>{EXPORT_FORMAT_LABELS[exportPreviewFormat]} 다운로드</button>
