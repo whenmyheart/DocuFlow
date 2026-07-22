@@ -51,6 +51,7 @@ const systemInstruction = [
   "content에는 Markdown 기호를 쓰지 말고 일반 텍스트만 반환하세요. 각 소제목은 별도 한 줄에 쓰고, 소제목 다음에는 줄바꿈한 본문을 배치하세요.",
   "서로 다른 내용 영역 사이에는 빈 줄을 하나 넣으세요. 번호가 있는 항목도 반드시 새 줄에서 시작하고, 여러 항목을 한 문단에 이어 붙이지 마세요.",
   "한 문단은 최대 2~3문장으로 제한해 읽기 쉽게 구성하세요.",
+  "입력된 항목이 하나뿐이어도 모든 내용을 한 문단에 몰아넣지 말고, 제목 다음에 1~2문장 단위의 짧은 문단을 2개 이상 구성하세요.",
   "사용자가 적은 사실의 의미를 바꾸지 말고, 개인정보나 민감정보를 추가로 추론하지 마세요.",
 ].join("\n");
 
@@ -131,15 +132,41 @@ function cleanText(value: unknown, maxLength: number) {
 }
 
 function improveDocumentSpacing(value: string) {
-  return value
+  const normalized = value
     .replace(/\r\n?/g, "\n")
-    .replace(/([가-힣][.!?])\s+(?=\d+[.)]\s+[가-힣])/g, "$1\n\n")
+    .replace(/([.!?。])\s+(?=(?:[-•]|\d+[.)])\s*)/g, "$1\n")
     .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n")
-    .trim();
+    .replace(/\n{3,}/g, "\n\n");
+
+  const headingPattern = /^(신청 안내|이용 안내|운영 안내|행사 안내|주요 내용|신청 방법|참여 방법|문의처|확인 사항)\s+(.{12,})$/;
+  const sourceLines = normalized.split(/\n+/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const separatedLines = sourceLines.flatMap((line) => {
+    const heading = line.match(headingPattern);
+    return heading ? [heading[1], heading[2]] : [line];
+  });
+
+  return separatedLines.flatMap((line) => {
+    if (/^(?:[-•]|\d+[.)])\s*/.test(line) || /^[^:：]{1,20}[:：]/.test(line)) return [line];
+    const sentences = line.split(/(?<=[.!?。])\s+/).filter(Boolean);
+    if (sentences.length < 2 || (sentences.length < 3 && line.length < 135)) return [line];
+
+    const paragraphs: string[] = [];
+    let paragraph = "";
+    let sentenceCount = 0;
+    sentences.forEach((sentence) => {
+      const nextLength = paragraph.length + sentence.length + (paragraph ? 1 : 0);
+      if (paragraph && (sentenceCount >= 2 || nextLength > 180)) {
+        paragraphs.push(paragraph);
+        paragraph = sentence;
+        sentenceCount = 1;
+      } else {
+        paragraph = paragraph ? `${paragraph} ${sentence}` : sentence;
+        sentenceCount += 1;
+      }
+    });
+    if (paragraph) paragraphs.push(paragraph);
+    return paragraphs;
+  }).join("\n\n").trim();
 }
 
 export async function generateDocumentWithAi({

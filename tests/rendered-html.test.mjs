@@ -52,9 +52,12 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /AI 검수하기/);
   assert.match(ai, /GoogleAIBackend/);
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
+  assert.match(ai, /입력된 항목이 하나뿐이어도/);
+  assert.match(ai, /sentences\.length < 3 && line\.length < 135/);
+  assert.match(ai, /sentenceCount >= 2/);
   assert.match(ai, /신청자가 빈칸을 직접 작성해 제출/);
   assert.match(ai, /improveDocumentSpacing/);
-  assert.ok(ai.includes("([가-힣][.!?])"));
+  assert.ok(ai.includes("(?<=[.!?。])"));
   assert.match(ai, /reviewGeneratedDocumentWithAi/);
   assert.match(ai, /신청서 양식의 빈칸은 신청자가 작성할 영역/);
   assert.match(ai, /responseJsonSchema/);
