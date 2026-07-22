@@ -300,18 +300,31 @@ function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (v
   );
 }
 
-function ExportPreviewDocument({ text }: { text: string }) {
+function ExportPreviewDocument({ text, details }: { text: string; details: Array<{ label: string; value: string }> }) {
   const blocks = createDraftBlocks(text);
+  const [titleBlock, ...bodyBlocks] = blocks;
+  const renderBlock = (block: DraftBlock) => {
+    if (block.kind === "title") return <h1 key={block.sourceIndex}>{block.text}</h1>;
+    if (block.kind === "heading") return <h2 key={block.sourceIndex}>{block.text}</h2>;
+    if (block.kind === "information") return <div className="preview-information" key={block.sourceIndex}><strong>{block.label}</strong><span>{block.value}</span></div>;
+    if (block.kind === "bullet") return <p className="preview-bullet" key={block.sourceIndex}>• {block.text}</p>;
+    if (block.kind === "important") return <p className="preview-important" key={block.sourceIndex}>{block.text}</p>;
+    return <p key={block.sourceIndex}>{block.text}</p>;
+  };
+
   return (
     <article className="export-preview-document" aria-label="내보낼 문서 미리보기">
-      {blocks.map((block) => {
-        if (block.kind === "title") return <h1 key={block.sourceIndex}>{block.text}</h1>;
-        if (block.kind === "heading") return <h2 key={block.sourceIndex}>{block.text}</h2>;
-        if (block.kind === "information") return <div className="preview-information" key={block.sourceIndex}><strong>{block.label}</strong><span>{block.value}</span></div>;
-        if (block.kind === "bullet") return <p className="preview-bullet" key={block.sourceIndex}>• {block.text}</p>;
-        if (block.kind === "important") return <p className="preview-important" key={block.sourceIndex}>{block.text}</p>;
-        return <p key={block.sourceIndex}>{block.text}</p>;
-      })}
+      {titleBlock && renderBlock(titleBlock)}
+      {details.length > 0 && (
+        <section className="preview-overview" aria-labelledby="preview-overview-heading">
+          <h2 id="preview-overview-heading">문서 주요 정보</h2>
+          <div className="preview-overview-grid">
+            {details.map((detail) => <div className="preview-information" key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></div>)}
+          </div>
+        </section>
+      )}
+      {details.length > 0 && bodyBlocks.length > 0 && <h2 className="preview-body-heading">상세 내용</h2>}
+      {bodyBlocks.map(renderBlock)}
     </article>
   );
 }
@@ -330,17 +343,21 @@ function escapeHtml(value: string) {
   })[character] ?? character);
 }
 
-function buildExportHtml(text: string) {
+function buildExportHtml(text: string, details: Array<{ label: string; value: string }> = []) {
   const blocks = createDraftBlocks(text);
-  const body = blocks.map((block) => {
+  const renderedBlocks = blocks.map((block) => {
     if (block.kind === "title") return `<h1>${escapeHtml(block.text)}</h1>`;
     if (block.kind === "heading") return `<h2>${escapeHtml(block.text)}</h2>`;
     if (block.kind === "information") return `<div class="info"><strong>${escapeHtml(block.label ?? "")}</strong><span>${escapeHtml(block.value ?? "")}</span></div>`;
     if (block.kind === "bullet") return `<p class="bullet">• ${escapeHtml(block.text)}</p>`;
     if (block.kind === "important") return `<p class="important">${escapeHtml(block.text)}</p>`;
     return `<p>${escapeHtml(block.text)}</p>`;
-  }).join("");
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#1f2937;font-family:Aptos,"Malgun Gothic",Arial,sans-serif;line-height:1.75}h1{margin:0 0 34px;padding-bottom:18px;border-bottom:3px solid #4472c4;color:#1f4e79;font-size:29px}h2{margin:28px 0 11px;color:#2f5597;font-size:18px}p{margin:0 0 15px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #b4c6e7;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#d9e2f3;color:#1f4e79}.important{padding:12px 14px;border-left:4px solid #4472c4;background:#eef3f9;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
+  });
+  const overview = details.length
+    ? `<h2>문서 주요 정보</h2>${details.map((detail) => `<div class="info"><strong>${escapeHtml(detail.label)}</strong><span>${escapeHtml(detail.value)}</span></div>`).join("")}<h2>상세 내용</h2>`
+    : "";
+  const body = renderedBlocks.length ? `${renderedBlocks[0]}${overview}${renderedBlocks.slice(1).join("")}` : overview;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(blocks[0]?.text || "DocuFlow 문서")}</title><style>body{max-width:760px;margin:48px auto;padding:0 28px;color:#111;font-family:Aptos,"Malgun Gothic",Arial,sans-serif;line-height:1.75}h1{margin:0 0 34px;padding-bottom:18px;border-bottom:3px solid #4472c4;color:#111;font-size:29px}h2{margin:28px 0 11px;color:#111;font-size:18px}p{margin:0 0 15px}.info{display:grid;grid-template-columns:160px 1fr;border:1px solid #b4c6e7;margin:8px 0}.info strong,.info span{padding:10px 12px}.info strong{background:#d9e2f3;color:#111}.important{padding:12px 14px;border-left:4px solid #4472c4;background:#eef3f9;color:#111;font-weight:700}@media print{body{margin:0;max-width:none}}</style></head><body>${body}</body></html>`;
 }
 
 function downloadFile(content: BlobPart[], type: string, fileName: string) {
@@ -460,6 +477,9 @@ export default function Home() {
 
   const selectedType = DOCUMENT_TYPES.find((type) => type.id === selectedTypeId) ?? null;
   const completedFieldCount = selectedType?.fields.filter((field) => fieldValues[field.id]?.trim()).length ?? 0;
+  const exportPreviewDetails = useMemo(() => selectedType?.fields
+    .filter((field) => fieldValues[field.id]?.trim() && !/(?:제목|신청서 이름|양식 이름)/.test(field.label))
+    .map((field) => ({ label: field.label, value: fieldValues[field.id].trim() })) ?? [], [fieldValues, selectedType]);
 
   useEffect(() => {
     let active = true;
@@ -629,7 +649,7 @@ export default function Home() {
   };
 
   const downloadWordDocument = () => {
-    downloadFile(["\ufeff", buildExportHtml(generatedText)], "application/msword;charset=utf-8", `${safeDocumentName(generatedText)}.doc`);
+    downloadFile(["\ufeff", buildExportHtml(generatedText, exportPreviewDetails)], "application/msword;charset=utf-8", `${safeDocumentName(generatedText)}.doc`);
     setDocumentActionMessage("Word 문서를 내려받았습니다.");
     setExportPreviewFormat(null);
   };
@@ -646,7 +666,17 @@ export default function Home() {
       const sectionFile = zip.file("Contents/section0.xml");
       if (!sectionFile) throw new Error("HWPX section unavailable");
       const sectionXml = await sectionFile.async("string");
-      const paragraphs = generatedText.split(/\r?\n/).map((line, index) => (
+      const [titleLine = "DocuFlow 문서", ...bodyLines] = generatedText.split(/\r?\n/);
+      const exportLines = exportPreviewDetails.length ? [
+        titleLine,
+        "",
+        "문서 주요 정보",
+        ...exportPreviewDetails.map((detail) => `${detail.label}: ${detail.value}`),
+        "",
+        "상세 내용",
+        ...bodyLines,
+      ] : [titleLine, ...bodyLines];
+      const paragraphs = exportLines.map((line, index) => (
         `<hp:p id="${Date.now() + index}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:t>${escapeHtml(line)}</hp:t></hp:run></hp:p>`
       )).join("");
       const nextSectionXml = sectionXml.replace(
@@ -655,7 +685,7 @@ export default function Home() {
       );
       if (nextSectionXml === sectionXml) throw new Error("HWPX placeholder unavailable");
       zip.file("Contents/section0.xml", nextSectionXml);
-      zip.file("Preview/PrvText.txt", generatedText);
+      zip.file("Preview/PrvText.txt", exportLines.join("\n"));
       zip.file("mimetype", "application/hwp+zip", { compression: "STORE" });
       const hwpx = await zip.generateAsync({
         type: "blob",
@@ -698,12 +728,17 @@ export default function Home() {
         pdf.text(lines, 20, y);
         y += lines.length * lineHeight + gap;
       };
-      blocks.forEach((block) => {
-        if (block.kind === "title") writeLines(block.text, 21, 8, [10, 73, 44]);
-        else if (block.kind === "heading") writeLines(block.text, 14, 4, [17, 98, 60]);
-        else if (block.kind === "information") writeLines(`${block.label}: ${block.value}`, 10.5, 3, [23, 36, 29]);
-        else if (block.kind === "bullet") writeLines(`• ${block.text}`, 10.5, 3, [23, 36, 29]);
-        else writeLines(block.text, 10.5, 4, [23, 36, 29]);
+      blocks.forEach((block, index) => {
+        if (block.kind === "title") writeLines(block.text, 21, 8, [17, 17, 17]);
+        else if (block.kind === "heading") writeLines(block.text, 14, 4, [17, 17, 17]);
+        else if (block.kind === "information") writeLines(`${block.label}: ${block.value}`, 10.5, 3, [17, 17, 17]);
+        else if (block.kind === "bullet") writeLines(`• ${block.text}`, 10.5, 3, [17, 17, 17]);
+        else writeLines(block.text, 10.5, 4, [17, 17, 17]);
+        if (index === 0 && exportPreviewDetails.length) {
+          writeLines("문서 주요 정보", 14, 4, [17, 17, 17]);
+          exportPreviewDetails.forEach((detail) => writeLines(`${detail.label}: ${detail.value}`, 10.5, 2, [17, 17, 17]));
+          writeLines("상세 내용", 14, 4, [17, 17, 17]);
+        }
       });
       pdf.save(`${safeDocumentName(generatedText)}.pdf`);
       setDocumentActionMessage("PDF 파일을 내려받았습니다.");
@@ -977,7 +1012,7 @@ export default function Home() {
               <button type="button" className={exportPreviewFormat === "hwpx" ? "active" : ""} onClick={() => setExportPreviewFormat("hwpx")}>한글(HWPX)</button>
             </nav>
             <div className={`export-preview-viewport format-${exportPreviewFormat}`}>
-              <ExportPreviewDocument text={generatedText} />
+              <ExportPreviewDocument text={generatedText} details={exportPreviewDetails} />
             </div>
             <footer className="export-preview-actions">
               <p>실제 변환 결과는 사용하는 프로그램에 따라 글꼴과 페이지 나눔이 조금 달라질 수 있습니다.</p>

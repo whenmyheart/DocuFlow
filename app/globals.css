@@ -184,29 +184,33 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .export-preview-tabs button { min-width: 105px; min-height: 34px; padding: 0 15px; border: 1px solid #b7c8bd; border-radius: 6px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
 .export-preview-tabs button.active { border-color: var(--green); background: var(--green); color: white; }
 .export-preview-viewport { min-width: 0; overflow: auto; padding: 34px; display: flex; align-items: flex-start; justify-content: center; }
-.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 22mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #17241d; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; line-height: 1.8; }
-.export-preview-document h1 { margin: 0 0 32px; padding-bottom: 18px; border-bottom: 3px solid var(--green); color: #0a492c; font-size: 30px; line-height: 1.35; }
-.export-preview-document h2 { margin: 30px 0 12px; color: var(--green); font-size: 18px; }
+.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 22mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #111; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; line-height: 1.8; }
+.export-preview-document h1 { margin: 0 0 32px; padding-bottom: 18px; border-bottom: 3px solid var(--green); color: #111; font-size: 30px; line-height: 1.35; }
+.export-preview-document h2 { margin: 30px 0 12px; color: #111; font-size: 18px; }
 .export-preview-document p { margin: 0 0 17px; font-size: 13px; line-height: 1.9; }
 .preview-information { margin: 8px 0; display: grid; grid-template-columns: 150px 1fr; border: 1px solid #ccd9d1; font-size: 12px; }
 .preview-information strong, .preview-information span { padding: 10px 12px; }
-.preview-information strong { background: var(--mint); color: var(--green); }
+.preview-information strong { background: var(--mint); color: #111; }
 .preview-bullet { padding-left: 4px; }
 .preview-important { padding: 12px 14px; border-left: 4px solid var(--green); background: var(--mint); font-weight: 700; }
+.preview-overview { margin: 0 0 30px; }
+.preview-overview h2 { margin-top: 0; }
+.preview-overview-grid { display: grid; gap: 7px; }
+.export-preview-document .preview-body-heading { margin-top: 34px; }
 
 .export-preview-viewport.format-word { background: #e8edf5; }
-.format-word .export-preview-document { color: #1f2937; font-family: Aptos, "Malgun Gothic", Arial, sans-serif; line-height: 1.75; }
-.format-word .export-preview-document h1 { border-bottom-color: #4472c4; color: #1f4e79; font-size: 29px; letter-spacing: -.025em; }
-.format-word .export-preview-document h2 { color: #2f5597; font-size: 18px; }
+.format-word .export-preview-document { color: #111; font-family: Aptos, "Malgun Gothic", Arial, sans-serif; line-height: 1.75; }
+.format-word .export-preview-document h1 { border-bottom-color: #4472c4; color: #111; font-size: 29px; letter-spacing: -.025em; }
+.format-word .export-preview-document h2 { color: #111; font-size: 18px; }
 .format-word .preview-information { border-color: #b4c6e7; }
-.format-word .preview-information strong { background: #d9e2f3; color: #1f4e79; }
-.format-word .preview-important { border-left-color: #4472c4; background: #eef3f9; color: #1f3d68; }
+.format-word .preview-information strong { background: #d9e2f3; color: #111; }
+.format-word .preview-important { border-left-color: #4472c4; background: #eef3f9; color: #111; }
 
 .export-preview-viewport.format-pdf { background: #e6eee9; }
-.format-pdf .export-preview-document { color: #17241d; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; }
-.format-pdf .export-preview-document h1 { border-bottom-color: #11623c; color: #0a492c; font-size: 30px; }
-.format-pdf .export-preview-document h2 { color: #11623c; }
-.format-pdf .preview-information strong { background: #e7f1ea; color: #11623c; }
+.format-pdf .export-preview-document { color: #111; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; }
+.format-pdf .export-preview-document h1 { border-bottom-color: #11623c; color: #111; font-size: 30px; }
+.format-pdf .export-preview-document h2 { color: #111; }
+.format-pdf .preview-information strong { background: #e7f1ea; color: #111; }
 .format-pdf .preview-important { border-left-color: #11623c; background: #e7f1ea; }
 
 .export-preview-viewport.format-hwpx { background: #ecebe7; }
