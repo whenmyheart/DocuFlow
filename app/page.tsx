@@ -448,6 +448,39 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
   );
 }
 
+function PaginatedExportPreview({ text, details, documentTypeId }: { text: string; details: Array<{ label: string; value: string }>; documentTypeId: string }) {
+  const sourceRef = useRef<HTMLDivElement | null>(null);
+  const [pages, setPages] = useState<Array<{ className: string; html: string }>>([]);
+
+  useEffect(() => {
+    const source = sourceRef.current?.querySelector<HTMLElement>(".export-preview-document");
+    if (!source) return;
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.left = "-10000px";
+    host.style.top = "0";
+    host.style.width = "172mm";
+    host.style.visibility = "hidden";
+    document.body.appendChild(host);
+    const pageNodes = createPaginatedPreviewPages(source, host);
+    setPages(pageNodes.map((page) => ({ className: page.className, html: page.innerHTML })));
+    host.remove();
+  }, [details, documentTypeId, text]);
+
+  return (
+    <>
+      <div className="export-preview-measure-source" ref={sourceRef} aria-hidden="true">
+        <ExportPreviewDocument text={text} details={details} documentTypeId={documentTypeId} />
+      </div>
+      <div className="export-preview-pages" aria-label={`미리보기 ${pages.length || 1}페이지`}>
+        {pages.length > 0
+          ? pages.map((page, index) => <article className={page.className} dangerouslySetInnerHTML={{ __html: page.html }} key={index} />)
+          : <ExportPreviewDocument text={text} details={details} documentTypeId={documentTypeId} />}
+      </div>
+    </>
+  );
+}
+
 function formatSavedAt(savedAt: number) {
   return new Date(savedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 }
@@ -463,15 +496,16 @@ function escapeHtml(value: string) {
 }
 
 const INLINE_EXPORT_STYLES = [
-  "display", "width", "height", "min-height", "max-width", "box-sizing",
+  "display", "width", "max-width", "box-sizing",
   "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
   "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
   "border", "border-top", "border-right", "border-bottom", "border-left", "border-collapse",
   "background-color", "color", "font-family", "font-size", "font-weight", "font-style",
   "line-height", "letter-spacing", "text-align", "vertical-align", "white-space", "writing-mode",
+  "break-before", "break-after", "break-inside", "page-break-before", "page-break-after", "page-break-inside",
 ] as const;
 
-function getStyledPreviewMarkup() {
+function getStyledPreviewClone() {
   const source = document.querySelector<HTMLElement>(".export-preview-document");
   if (!source) throw new Error("Export preview unavailable");
   const clone = source.cloneNode(true) as HTMLElement;
@@ -486,11 +520,56 @@ function getStyledPreviewMarkup() {
   });
   clone.style.width = "172mm";
   clone.style.maxWidth = "172mm";
-  clone.style.minHeight = "257mm";
-  clone.style.margin = "0 auto";
+  clone.style.height = "auto";
+  clone.style.minHeight = "auto";
+  clone.style.margin = "0";
+  clone.style.padding = "0";
+  clone.style.border = "0";
   clone.style.boxShadow = "none";
   clone.style.overflow = "visible";
+  clone.style.backgroundColor = "#ffffff";
+  return clone;
+}
+
+function getStyledPreviewMarkup() {
+  const clone = getStyledPreviewClone();
   return clone.outerHTML;
+}
+
+function createPaginatedPreviewPages(source: HTMLElement, host: HTMLElement) {
+  const pageHeightPx = 257 * 96 / 25.4;
+  const createPage = () => {
+    const page = source.cloneNode(false) as HTMLElement;
+    page.removeAttribute("aria-label");
+    page.style.width = "172mm";
+    page.style.maxWidth = "172mm";
+    page.style.height = "auto";
+    page.style.minHeight = "auto";
+    page.style.margin = "0";
+    page.style.padding = "0";
+    page.style.border = "0";
+    page.style.boxShadow = "none";
+    page.style.overflow = "visible";
+    page.style.backgroundColor = "#ffffff";
+    host.appendChild(page);
+    return page;
+  };
+
+  const pages: HTMLElement[] = [];
+  let currentPage = createPage();
+  Array.from(source.children).forEach((sourceChild) => {
+    const child = sourceChild.cloneNode(true) as HTMLElement;
+    currentPage.appendChild(child);
+    if (currentPage.scrollHeight > pageHeightPx + 2 && currentPage.childElementCount > 1) {
+      child.remove();
+      pages.push(currentPage);
+      currentPage = createPage();
+      currentPage.appendChild(child);
+    }
+  });
+  if (currentPage.childElementCount > 0) pages.push(currentPage);
+  else currentPage.remove();
+  return pages;
 }
 
 function buildPreviewExportHtml(markup: string, title: string) {
@@ -1008,24 +1087,35 @@ export default function Home() {
   const downloadPdfDocument = async () => {
     setDocumentActionMessage("PDF 파일을 만들고 있습니다.");
     try {
-      const preview = document.querySelector<HTMLElement>(".export-preview-document");
-      if (!preview) throw new Error("Export preview unavailable");
       const [{ jsPDF }, { default: html2canvas }] = await Promise.all([import("jspdf"), import("html2canvas")]);
-      const canvas = await html2canvas(preview, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-      const pdf = new jsPDF({ unit: "mm", format: "a4" });
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imageHeight = canvas.height * pageWidth / canvas.width;
-      const imageData = canvas.toDataURL("image/png");
-      let remainingHeight = imageHeight;
-      let offsetY = 0;
-      pdf.addImage(imageData, "PNG", 0, offsetY, pageWidth, imageHeight, undefined, "FAST");
-      remainingHeight -= pageHeight;
-      while (remainingHeight > 0) {
-        offsetY = remainingHeight - imageHeight;
-        pdf.addPage();
-        pdf.addImage(imageData, "PNG", 0, offsetY, pageWidth, imageHeight, undefined, "FAST");
-        remainingHeight -= pageHeight;
+      const exportNode = getStyledPreviewClone();
+      const renderHost = document.createElement("div");
+      renderHost.style.position = "fixed";
+      renderHost.style.left = "-10000px";
+      renderHost.style.top = "0";
+      renderHost.style.width = "172mm";
+      renderHost.style.background = "#ffffff";
+      document.body.appendChild(renderHost);
+
+      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      try {
+        const pages = createPaginatedPreviewPages(exportNode, renderHost);
+        for (let index = 0; index < pages.length; index += 1) {
+          const canvas = await html2canvas(pages[index], {
+            scale: 2,
+            backgroundColor: "#ffffff",
+            useCORS: true,
+            logging: false,
+          });
+          if (index > 0) pdf.addPage("a4", "portrait");
+          const naturalHeight = canvas.height * 172 / canvas.width;
+          const renderHeight = Math.min(naturalHeight, 257);
+          const renderWidth = naturalHeight > 257 ? canvas.width * 257 / canvas.height : 172;
+          const renderX = 19 + (172 - renderWidth) / 2;
+          pdf.addImage(canvas.toDataURL("image/png"), "PNG", renderX, 20, renderWidth, renderHeight, undefined, "FAST");
+        }
+      } finally {
+        renderHost.remove();
       }
       const title = documentName.trim() || safeDocumentName(generatedText);
       pdf.save(`${safeDocumentName(title)}.pdf`);
@@ -1333,7 +1423,7 @@ export default function Home() {
               <button type="button" className={exportPreviewFormat === "hwpx" ? "active" : ""} onClick={() => setExportPreviewFormat("hwpx")}>한글(HWPX)</button>
             </nav>
             <div className={`export-preview-viewport format-${exportPreviewFormat}`}>
-              <ExportPreviewDocument text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} />
+              <PaginatedExportPreview text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} />
             </div>
             <footer className="export-preview-actions">
               <p>미리보기와 내려받는 파일은 모두 A4 크기와 동일한 여백을 사용합니다.</p>

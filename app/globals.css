@@ -200,11 +200,14 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .export-preview-tabs button { min-width: 105px; min-height: 34px; padding: 0 15px; border: 1px solid #b7c8bd; border-radius: 6px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
 .export-preview-tabs button.active { border-color: var(--green); background: var(--green); color: white; }
 .export-preview-viewport { min-width: 0; overflow: auto; padding: 34px; display: flex; align-items: flex-start; justify-content: center; }
-.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 20mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #111; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; line-height: 1.8; }
+.export-preview-measure-source { position: fixed; left: -10000px; top: 0; width: 210mm; visibility: hidden; pointer-events: none; }
+.export-preview-pages { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.export-preview-pages::after { margin-top: -16px; color: #637268; font-size: 10px; content: attr(aria-label); }
+.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 20mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.8; }
 .export-preview-document h1 { margin: 0 0 32px; padding-bottom: 18px; border-bottom: 3px solid var(--green); color: #111; font-size: 30px; line-height: 1.35; }
 .export-preview-document h2 { margin: 30px 0 12px; color: #111; font-size: 18px; }
 .export-preview-document p { margin: 0 0 17px; font-size: 13px; line-height: 1.9; }
-.preview-information { margin: 8px 0; display: grid; grid-template-columns: 150px 1fr; border: 1px solid #ccd9d1; font-size: 12px; }
+.preview-information { margin: 8px 0; display: grid; grid-template-columns: 150px 1fr; break-inside: avoid; page-break-inside: avoid; border: 1px solid #ccd9d1; font-size: 12px; }
 .preview-information strong, .preview-information span { padding: 10px 12px; }
 .preview-information strong { background: var(--mint); color: #111; }
 .preview-bullet { padding-left: 4px; }
@@ -236,21 +239,22 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .template-approval { width: 100%; border-collapse: collapse; table-layout: fixed; color: #111; font-size: 9px; text-align: center; }
 .template-approval th, .template-approval td { width: 45px; height: 38px; padding: 5px 3px; border: 1px solid #777; }
 .template-approval th { width: 28px; writing-mode: vertical-rl; }
-.template-table { width: 100%; border-collapse: collapse; color: #111; font-size: 12px; }
+.template-table { width: 100%; border-collapse: collapse; break-inside: auto; page-break-inside: auto; color: #111; font-size: 12px; }
+.template-table-row { break-inside: avoid; page-break-inside: avoid; }
 .template-table-row th, .template-table-row td { padding: 10px 12px; border: 1px solid #777; }
 .template-table-row th { width: 155px; background: #e7e7e7; text-align: center; }
 .export-preview-viewport .form-template h1 { margin: 0; padding: 0; border: 0; color: #111; text-align: center; letter-spacing: .08em; }
 .export-preview-viewport .form-template h2 { margin: 20px 0 0; padding: 9px 12px; border: 1px solid #777; background: #e7e7e7; color: #111; font-size: 14px; text-align: center; }
-.application-entry-grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+.application-entry-grid { width: 100%; border-collapse: collapse; break-inside: auto; page-break-inside: auto; font-size: 12px; }
+.application-entry-grid tr { break-inside: avoid; page-break-inside: avoid; }
 .application-entry-grid th, .application-entry-grid td { height: 52px; padding: 10px 12px; border: 1px solid #777; }
 .application-entry-grid th { width: 155px; background: #f0f0f0; text-align: center; }
-.template-writing-area { min-height: 145px; border: 1px solid #777; border-top: 0; }
+.template-writing-area { break-inside: avoid; page-break-inside: avoid; border: 1px solid #777; border-top: 0; }
 .template-writing-area > p { padding: 12px 15px; }
-.template-writing-area.compact { min-height: 82px; }
 .proposal-template > h1 { margin-bottom: 34px !important; font-size: 31px !important; }
-.proposal-section { min-height: 135px; border: 1px solid #777; border-top: 0; }
-.proposal-section h2 { margin: 0 !important; border: 0 !important; border-bottom: 1px solid #777 !important; }
-.proposal-section p { padding: 14px 16px; }
+.proposal-section { margin-top: 18px; break-inside: avoid; page-break-inside: avoid; }
+.proposal-section h2 { margin: 0 !important; border: 1px solid #777 !important; }
+.proposal-section p { margin: 0 !important; padding: 12px 4px 4px; }
 .template-document-subject { width: 100%; margin: 0 !important; border-collapse: collapse; }
 .template-document-subject th, .template-document-subject td { padding: 10px 12px; border: 1px solid #777; }
 .template-document-subject th { width: 155px; background: #e7e7e7; text-align: center; }
@@ -282,14 +286,14 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .format-word .preview-important { border-left-color: #4472c4; background: #eef3f9; color: #111; }
 
 .export-preview-viewport.format-pdf { background: #e6eee9; }
-.format-pdf .export-preview-document { color: #111; font-family: "Nanum Gothic", "Malgun Gothic", sans-serif; }
+.format-pdf .export-preview-document { color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; }
 .format-pdf .export-preview-document h1 { border-bottom-color: #11623c; color: #111; font-size: 30px; }
 .format-pdf .export-preview-document h2 { color: #111; }
 .format-pdf .preview-information strong { background: #e7f1ea; color: #111; }
 .format-pdf .preview-important { border-left-color: #11623c; background: #e7f1ea; }
 
 .export-preview-viewport.format-hwpx { background: #ecebe7; }
-.format-hwpx .export-preview-document { color: #171717; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.8; }
+.format-hwpx .export-preview-document { color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.75; }
 .format-hwpx .export-preview-document h1 { margin-bottom: 38px; padding-bottom: 16px; border-bottom: 4px double #2c2c2c; color: #111; font-size: 28px; text-align: center; letter-spacing: .02em; }
 .format-hwpx .export-preview-document h2 { margin-top: 32px; padding: 0 0 7px 9px; border-bottom: 1px solid #777; border-left: 4px solid #333; color: #111; font-size: 17px; }
 .format-hwpx .export-preview-document p { font-size: 13.5px; }
