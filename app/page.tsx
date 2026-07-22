@@ -35,17 +35,19 @@ const DOCUMENT_TYPES: DocumentType[] = [
   },
   {
     id: "application",
-    name: "신청서",
+    name: "신청서 양식",
     symbol: "접수",
-    description: "신청자 정보와 신청 내용을 빠짐없이 받는 양식",
+    description: "작성자가 채워 제출할 항목과 안내를 구성하는 양식",
     fields: [
-      { id: "applicationName", label: "신청서 이름", placeholder: "예: 교내 동아리 활동비 지원 신청서", wide: true },
-      { id: "name", label: "성명", placeholder: "예: 홍길동" },
-      { id: "studentId", label: "학번·사번", placeholder: "예: 20261234" },
-      { id: "phone", label: "전화번호", placeholder: "예: 010-1234-5678" },
-      { id: "affiliation", label: "소속", placeholder: "예: 사회과학대학" },
-      { id: "purpose", label: "신청 목적", placeholder: "예: 동아리 전시회 운영비 지원", wide: true },
-      { id: "submission", label: "제출 방법·기한", placeholder: "예: 8월 10일까지 이메일 제출", wide: true },
+      { id: "applicationName", label: "양식 제목", placeholder: "예: 교내 동아리 활동비 지원 신청서", wide: true },
+      { id: "audience", label: "신청 대상", placeholder: "예: 교내 등록 동아리" },
+      { id: "organizer", label: "담당 부서·기관", placeholder: "예: 학생지원과" },
+      { id: "purpose", label: "신청 안내·목적", placeholder: "예: 동아리의 자율적인 활동과 행사 운영을 지원", wide: true },
+      { id: "collectionFields", label: "신청자에게 받을 정보", placeholder: "예: 성명, 학번, 소속, 전화번호, 신청 사유, 지원 금액", wide: true },
+      { id: "period", label: "신청 기간", placeholder: "예: 2026. 8. 1. ~ 8. 10." },
+      { id: "submission", label: "제출 방법·제출처", placeholder: "예: 학생 포털에서 작성 후 제출", wide: true },
+      { id: "attachments", label: "필요한 첨부서류", placeholder: "예: 활동 계획서, 예산 사용 계획서", wide: true },
+      { id: "confirmation", label: "확인·동의 문구", placeholder: "예: 기재 내용이 사실임을 확인합니다.", wide: true },
       { id: "contact", label: "문의처", placeholder: "예: 학생지원과 02-1234-5678" },
     ],
   },
@@ -156,12 +158,14 @@ const SAMPLE_VALUES: Record<string, Record<string, string>> = {
   },
   application: {
     applicationName: "2026 교내 동아리 활동비 지원 신청서",
-    name: "김하늘",
-    studentId: "20261234",
-    phone: "010-1234-5678",
-    affiliation: "사회과학대학 행정학과",
-    purpose: "가을 정기 전시회 운영비 지원",
-    submission: "2026. 8. 10.까지 학생 포털로 제출",
+    audience: "교내 등록 동아리",
+    organizer: "새롬대학교 학생지원과",
+    purpose: "동아리의 자율적인 활동과 교내 행사 운영을 지원합니다.",
+    collectionFields: "동아리명, 대표자 성명, 학번, 소속, 전화번호, 신청 사유, 지원 요청 금액",
+    period: "2026. 8. 1. ~ 2026. 8. 10.",
+    submission: "학생 포털에서 작성 후 제출",
+    attachments: "활동 계획서, 예산 사용 계획서",
+    confirmation: "위 기재 내용이 사실임을 확인합니다.",
     contact: "학생지원과 02-1234-5678",
   },
   proposal: {
@@ -282,6 +286,32 @@ function formatSavedAt(savedAt: number) {
 }
 
 function createBasicDraft(documentType: DocumentType, values: Record<string, string>) {
+  if (documentType.id === "application") {
+    const requestedFields = (values.collectionFields || "신청자 정보, 신청 내용")
+      .split(/[,，\n]/)
+      .map((field) => field.trim())
+      .filter(Boolean);
+    const sections = [
+      values.audience && `신청 대상: ${values.audience.trim()}`,
+      values.purpose && `신청 안내: ${values.purpose.trim()}`,
+      "",
+      "신청자 작성 항목",
+      ...requestedFields.map((field) => `${field}: ______________________________`),
+      "",
+      values.period && `신청 기간: ${values.period.trim()}`,
+      values.submission && `제출 방법·제출처: ${values.submission.trim()}`,
+      values.attachments && `첨부서류: ${values.attachments.trim()}`,
+      values.confirmation && `확인·동의: □ ${values.confirmation.trim()}`,
+      values.contact && `문의처: ${values.contact.trim()}`,
+    ].filter((line): line is string => line !== false && line !== undefined);
+
+    return {
+      title: values.applicationName?.trim() || "신청서 양식",
+      content: sections.join("\n"),
+      summary: "AI 연결이 원활하지 않아 입력한 정보를 바탕으로 작성자가 직접 채울 수 있는 기본 신청서 양식을 만들었습니다.",
+    };
+  }
+
   const filledFields = documentType.fields
     .map((field) => ({ label: field.label, value: values[field.id]?.trim() ?? "" }))
     .filter((field) => field.value);

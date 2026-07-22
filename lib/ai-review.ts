@@ -35,7 +35,10 @@ const systemInstruction = [
   "입력하지 않은 날짜, 연락처, 금액, 사람 이름 등의 사실을 임의로 만들어내지 마세요.",
   "빈 정보가 있으면 해당 내용을 억지로 채우거나 '미정'이라고 쓰지 말고, 문서 흐름상 자연스럽게 생략하세요.",
   "문서 유형에 맞는 어조와 구조를 사용하세요. 공지는 핵심 안내와 행동 요청이 분명해야 하고, 보고서는 목적·내용·결과가 구분되어야 하며, 기획서는 배경·목표·실행 계획이 드러나야 합니다.",
-  "content에는 Markdown 기호를 쓰지 말고, 소제목과 문단을 줄바꿈으로 구분한 일반 텍스트만 반환하세요.",
+  "신청서 양식은 담당자가 배포하고 다른 사람이 직접 작성해 제출하는 빈 양식으로 만드세요. 사용자가 입력한 값은 양식 설계와 안내 정보이며, 신청자가 이미 작성한 답변처럼 서술하지 마세요. 수집할 항목마다 '항목명: ______' 형식의 빈 작성란을 제공하세요.",
+  "content에는 Markdown 기호를 쓰지 말고 일반 텍스트만 반환하세요. 각 소제목은 별도 한 줄에 쓰고, 소제목 다음에는 줄바꿈한 본문을 배치하세요.",
+  "서로 다른 내용 영역 사이에는 빈 줄을 하나 넣으세요. 번호가 있는 항목도 반드시 새 줄에서 시작하고, 여러 항목을 한 문단에 이어 붙이지 마세요.",
+  "한 문단은 최대 2~3문장으로 제한해 읽기 쉽게 구성하세요.",
   "사용자가 적은 사실의 의미를 바꾸지 말고, 개인정보나 민감정보를 추가로 추론하지 마세요.",
 ].join("\n");
 
@@ -77,6 +80,18 @@ function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function improveDocumentSpacing(value: string) {
+  return value
+    .replace(/\r\n?/g, "\n")
+    .replace(/([.!?])\s+(?=\d+[.)]\s+)/g, "$1\n\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .trim();
+}
+
 export async function generateDocumentWithAi({
   documentType,
   fields,
@@ -93,13 +108,15 @@ export async function generateDocumentWithAi({
     "사용자가 입력한 정보:",
     fieldText || "- 입력된 세부 정보 없음",
     additionalRequest.trim() ? `추가 요청:\n${additionalRequest.trim()}` : "추가 요청: 없음",
-    "위 정보만 사실로 사용해 완성된 문서 초안을 작성하세요.",
+    documentType.includes("신청서")
+      ? "위 정보로 담당자가 배포하고 신청자가 빈칸을 직접 작성해 제출할 수 있는 신청서 양식을 만드세요."
+      : "위 정보만 사실로 사용해 완성된 문서 초안을 작성하세요.",
   ].join("\n\n");
 
   const result = await model.generateContent(prompt.slice(0, 14_000));
   const parsed = JSON.parse(result.response.text()) as Record<string, unknown>;
   const title = cleanText(parsed.title, 140);
-  const content = cleanText(parsed.content, 12_000);
+  const content = improveDocumentSpacing(cleanText(parsed.content, 12_000));
 
   if (!title || !content) throw new Error("invalid-ai-response");
 

@@ -109,7 +109,8 @@ button:disabled { cursor: wait; opacity: .72; }
 .formatted-document:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(17,98,60,.08); }
 .formatted-document h3 { margin: 0 0 28px; padding-bottom: 18px; border-bottom: 2px solid var(--green); color: var(--green-dark); font-size: 25px; line-height: 1.35; letter-spacing: -.045em; }
 .formatted-document h4 { margin: 26px 0 10px; color: var(--green); font-size: 15px; line-height: 1.45; }
-.formatted-document p { margin: 0 0 10px; color: #35443b; font-size: 12px; line-height: 1.85; }
+.formatted-document p { margin: 0 0 17px; color: #35443b; font-size: 12px; line-height: 1.95; }
+.formatted-document p:last-child { margin-bottom: 0; }
 .formatted-document [contenteditable="true"] { border-radius: 3px; outline: none; transition: background .15s, box-shadow .15s; }
 .formatted-document [contenteditable="true"]:hover { background: #f4f8f5; }
 .formatted-document [contenteditable="true"]:focus { background: #f4f8f5; box-shadow: 0 0 0 3px #f4f8f5; }
