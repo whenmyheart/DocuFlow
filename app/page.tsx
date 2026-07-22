@@ -526,6 +526,7 @@ async function buildWordDocumentBlob({
   });
   const sectionHeading = (value: string) => new Table({
     width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [pageWidth],
     layout: TableLayoutType.FIXED,
     borders,
     rows: [new TableRow({ cantSplit: true, height: { value: 540, rule: HeightRule.ATLEAST }, children: [new TableCell({
@@ -562,21 +563,31 @@ async function buildWordDocumentBlob({
       ] })),
     ],
   });
-  const approvalTable = new Table({
-    width: { size: 3100, type: WidthType.DXA },
-    columnWidths: [460, 660, 660, 660, 660],
-    layout: TableLayoutType.FIXED,
-    borders,
-    rows: [new TableRow({ cantSplit: true, height: { value: 610, rule: HeightRule.EXACT }, children: ["결재", "담당", "과장", "부장", "이사"].map((label) => new TableCell({ margins: { top: 60, bottom: 60, left: 40, right: 40 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(label, { size: 16, align: AlignmentType.CENTER, after: 0 })] })) })],
-  });
+  const approvalBorder = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder };
   const titleWithApproval = (value: string) => new Table({
     width: { size: pageWidth, type: WidthType.DXA },
-    columnWidths: [6352, 3400],
+    columnWidths: [6652, 460, 660, 660, 660, 660],
     layout: TableLayoutType.FIXED,
     borders: noBorders,
     rows: [new TableRow({ cantSplit: true, children: [
-      new TableCell({ width: { size: 6352, type: WidthType.DXA }, borders: noBorders, margins: { top: 100, bottom: 220, left: 0, right: 260 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, size: 44, align: AlignmentType.CENTER, after: 0 })] }),
-      new TableCell({ width: { size: 3400, type: WidthType.DXA }, borders: noBorders, margins: { top: 0, bottom: 220, left: 150, right: 0 }, verticalAlign: VerticalAlign.TOP, children: [approvalTable, new Paragraph("")] }),
+      new TableCell({ width: { size: 6652, type: WidthType.DXA }, borders: noBorders, margins: { top: 80, bottom: 220, left: 0, right: 240 }, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, size: 36, align: AlignmentType.CENTER, after: 0 })] }),
+      ...["결재", "담당", "과장", "부장", "이사"].map((label, index) => new TableCell({
+        width: { size: index === 0 ? 460 : 660, type: WidthType.DXA },
+        borders: approvalBorder,
+        margins: { top: 70, bottom: 70, left: 35, right: 35 },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [paragraph(label, { size: 15, align: AlignmentType.CENTER, after: 0 })],
+      })),
+    ] })],
+  });
+  const subjectTable = (label: string, value: string) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [1800, 7952],
+    layout: TableLayoutType.FIXED,
+    borders,
+    rows: [new TableRow({ cantSplit: true, height: { value: 620, rule: HeightRule.ATLEAST }, children: [
+      new TableCell({ width: { size: 1800, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "E7E7E7", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
+      new TableCell({ width: { size: 7952, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, after: 0 })] }),
     ] })],
   });
 
@@ -629,6 +640,34 @@ async function buildWordDocumentBlob({
     if (guidanceRows.length) children.push(sectionHeading("신청 안내"), informationTable(guidanceRows));
     children.push(sectionHeading("신청자 작성란"), informationTable((formItems.length ? formItems : ["성명", "연락처", "소속", "신청 내용"]).map((label) => ({ label, value: "" })), true));
     if (bodyParagraphs.length) children.push(sectionHeading("확인 및 기타 사항"), ...bodyParagraphs);
+  } else if (documentTypeId === "proposal") {
+    children.push(paragraph(title, { bold: true, size: 38, align: AlignmentType.CENTER, after: 300 }));
+    if (details.length) children.push(informationTable(details.slice(0, 3)));
+    details.slice(3).forEach((detail) => children.push(sectionHeading(detail.label), paragraph(detail.value, { after: 180 })));
+    if (bodyParagraphs.length) children.push(sectionHeading("세부 실행 내용"), ...bodyParagraphs);
+  } else if (documentTypeId === "report" || documentTypeId === "minutes") {
+    const isMinutes = documentTypeId === "minutes";
+    const metadataCount = isMinutes ? 4 : 3;
+    children.push(titleWithApproval(isMinutes ? "회의록" : "보고서"), subjectTable(isMinutes ? "회의명" : "제목", title));
+    if (details.length) children.push(informationTable(details.slice(0, metadataCount)));
+    if (bodyParagraphs.length) children.push(sectionHeading(isMinutes ? "회의 내용" : "보고 내용"), ...bodyParagraphs);
+    details.slice(metadataCount).forEach((detail) => children.push(sectionHeading(detail.label), paragraph(detail.value, { after: 180 })));
+  } else if (documentTypeId === "event") {
+    const featured = details.filter((detail) => /일시|장소/.test(detail.label));
+    const remaining = details.filter((detail) => !featured.includes(detail));
+    children.push(
+      paragraph("EVENT INFORMATION", { bold: true, size: 18, align: AlignmentType.CENTER, after: 80 }),
+      paragraph(title, { bold: true, size: 40, align: AlignmentType.CENTER, after: 280 }),
+    );
+    if (featured.length) children.push(informationTable(featured));
+    if (bodyParagraphs.length) children.push(sectionHeading("행사 안내"), ...bodyParagraphs);
+    if (remaining.length) children.push(sectionHeading("참여 정보"), informationTable(remaining));
+  } else if (documentTypeId === "official") {
+    children.push(titleWithApproval("업무 협조공문"));
+    if (details.length) children.push(informationTable(details));
+    children.push(subjectTable("제목", title));
+    if (bodyParagraphs.length) children.push(sectionHeading("협조 요청 내용"), ...bodyParagraphs);
+    children.push(paragraph("위와 같이 협조를 요청드립니다.", { after: 260 }), paragraph("DocuFlow", { bold: true, align: AlignmentType.RIGHT, after: 0 }));
   } else {
     children.push(paragraph(title, { bold: true, size: 34, align: AlignmentType.CENTER, after: 320 }));
     if (details.length) children.push(sectionHeading("문서 주요 정보"), informationTable(details));

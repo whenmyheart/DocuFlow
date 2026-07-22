@@ -292,7 +292,7 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .format-pdf .preview-important { border-left-color: #11623c; background: #e7f1ea; }
 
 .export-preview-viewport.format-hwpx { background: #ecebe7; }
-.format-hwpx .export-preview-document { color: #171717; font-family: "함초롬바탕", "Batang", "바탕", serif; line-height: 1.9; }
+.format-hwpx .export-preview-document { color: #171717; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.8; }
 .format-hwpx .export-preview-document h1 { margin-bottom: 38px; padding-bottom: 16px; border-bottom: 4px double #2c2c2c; color: #111; font-size: 28px; text-align: center; letter-spacing: .02em; }
 .format-hwpx .export-preview-document h2 { margin-top: 32px; padding: 0 0 7px 9px; border-bottom: 1px solid #777; border-left: 4px solid #333; color: #111; font-size: 17px; }
 .format-hwpx .export-preview-document p { font-size: 13.5px; }
