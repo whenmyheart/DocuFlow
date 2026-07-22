@@ -6,6 +6,7 @@ const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   root: "firebase-hosting",
+  publicDir: "../public",
   plugins: [react()],
   resolve: {
     alias: {

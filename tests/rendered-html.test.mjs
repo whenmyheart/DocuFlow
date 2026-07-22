@@ -46,7 +46,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /copyGeneratedDocument/);
   assert.match(page, /downloadWordDocument/);
   assert.match(page, /downloadHangulDocument/);
-  assert.match(page, /printGeneratedDocument/);
+  assert.match(page, /downloadPdfDocument/);
+  assert.match(page, /application\/hwp\+zip/);
+  assert.match(page, /NanumGothic-Regular\.ttf/);
   assert.match(page, /AI 검수하기/);
   assert.match(ai, /GoogleAIBackend/);
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
@@ -58,4 +60,15 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(ai, /responseJsonSchema/);
   assert.match(ai, /의미 기반 검색 도우미/);
   assert.doesNotMatch(ai, /reviewDocumentWithAi|AIza/);
+});
+
+test("ships direct PDF and HWPX download assets", async () => {
+  const config = await readFile(new URL("../vite.firebase.config.ts", import.meta.url), "utf8");
+  const [template, font] = await Promise.all([
+    readFile(new URL("../public/docuflow-template.hwpx", import.meta.url)),
+    readFile(new URL("../public/fonts/NanumGothic-Regular.ttf", import.meta.url)),
+  ]);
+  assert.match(config, /publicDir:\s*"\.\.\/public"/);
+  assert.ok(template.length > 1000);
+  assert.ok(font.length > 1000000);
 });

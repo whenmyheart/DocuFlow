@@ -332,14 +332,13 @@ function safeDocumentName(text: string) {
     .slice(0, 60);
 }
 
-function encodeRtf(value: string) {
-  return Array.from(value).map((character) => {
-    if (character === "\\" || character === "{" || character === "}") return `\\${character}`;
-    if (character === "\n") return "\\par\n";
-    const code = character.charCodeAt(0);
-    if (code < 128) return character;
-    return `\\u${code > 32767 ? code - 65536 : code}?`;
-  }).join("");
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+  }
+  return window.btoa(binary);
 }
 
 function createBasicReview(documentType: DocumentType, values: Record<string, string>, text: string): AiDocumentReview {
@@ -578,27 +577,82 @@ export default function Home() {
     setDocumentActionMessage("Word 문서를 내려받았습니다.");
   };
 
-  const downloadHangulDocument = () => {
-    const [title = "DocuFlow 문서", ...body] = generatedText.split(/\r?\n/);
-    const rtf = `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Malgun Gothic;}}\\uc1\\f0\\fs32\\b ${encodeRtf(title)}\\b0\\par\\par\\fs22 ${encodeRtf(body.join("\n"))}}`;
-    downloadFile([rtf], "application/rtf;charset=utf-8", `${safeDocumentName(generatedText)}_한글용.rtf`);
-    setDocumentActionMessage("한글에서 열어 편집할 수 있는 RTF 문서를 내려받았습니다.");
+  const downloadHangulDocument = async () => {
+    setDocumentActionMessage("한글 파일을 만들고 있습니다.");
+    try {
+      const [{ default: JSZip }, templateResponse] = await Promise.all([
+        import("jszip"),
+        fetch("/docuflow-template.hwpx"),
+      ]);
+      if (!templateResponse.ok) throw new Error("HWPX template unavailable");
+      const zip = await JSZip.loadAsync(await templateResponse.arrayBuffer());
+      const sectionFile = zip.file("Contents/section0.xml");
+      if (!sectionFile) throw new Error("HWPX section unavailable");
+      const sectionXml = await sectionFile.async("string");
+      const paragraphs = generatedText.split(/\r?\n/).map((line, index) => (
+        `<hp:p id="${Date.now() + index}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:t>${escapeHtml(line)}</hp:t></hp:run></hp:p>`
+      )).join("");
+      const nextSectionXml = sectionXml.replace(
+        /<hp:p id="1698964157"[\s\S]*?<\/hp:p>/,
+        paragraphs,
+      );
+      if (nextSectionXml === sectionXml) throw new Error("HWPX placeholder unavailable");
+      zip.file("Contents/section0.xml", nextSectionXml);
+      zip.file("Preview/PrvText.txt", generatedText);
+      zip.file("mimetype", "application/hwp+zip", { compression: "STORE" });
+      const hwpx = await zip.generateAsync({
+        type: "blob",
+        mimeType: "application/hwp+zip",
+        compression: "DEFLATE",
+      });
+      downloadFile([hwpx], "application/hwp+zip", `${safeDocumentName(generatedText)}.hwpx`);
+      setDocumentActionMessage("한글 HWPX 파일을 내려받았습니다.");
+    } catch (error) {
+      console.error(error);
+      setDocumentActionMessage("한글 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    }
   };
 
-  const printGeneratedDocument = () => {
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow) {
-      setDocumentActionMessage("인쇄 창을 열지 못했습니다. 브라우저의 팝업 허용 여부를 확인해 주세요.");
-      return;
+  const downloadPdfDocument = async () => {
+    setDocumentActionMessage("PDF 파일을 만들고 있습니다.");
+    try {
+      const [{ jsPDF }, fontResponse] = await Promise.all([
+        import("jspdf"),
+        fetch("/fonts/NanumGothic-Regular.ttf"),
+      ]);
+      if (!fontResponse.ok) throw new Error("PDF font unavailable");
+      const pdf = new jsPDF({ unit: "mm", format: "a4" });
+      pdf.addFileToVFS("NanumGothic-Regular.ttf", arrayBufferToBase64(await fontResponse.arrayBuffer()));
+      pdf.addFont("NanumGothic-Regular.ttf", "NanumGothic", "normal");
+      pdf.setFont("NanumGothic", "normal");
+      const blocks = createDraftBlocks(generatedText);
+      let y = 24;
+      const writeLines = (text: string, fontSize: number, gap: number, color: [number, number, number]) => {
+        pdf.setFontSize(fontSize);
+        pdf.setTextColor(...color);
+        const lines = pdf.splitTextToSize(text, 170) as string[];
+        const lineHeight = fontSize * 0.45;
+        if (y + lines.length * lineHeight > 282) {
+          pdf.addPage();
+          pdf.setFont("NanumGothic", "normal");
+          y = 24;
+        }
+        pdf.text(lines, 20, y);
+        y += lines.length * lineHeight + gap;
+      };
+      blocks.forEach((block) => {
+        if (block.kind === "title") writeLines(block.text, 21, 8, [10, 73, 44]);
+        else if (block.kind === "heading") writeLines(block.text, 14, 4, [17, 98, 60]);
+        else if (block.kind === "information") writeLines(`${block.label}: ${block.value}`, 10.5, 3, [23, 36, 29]);
+        else if (block.kind === "bullet") writeLines(`• ${block.text}`, 10.5, 3, [23, 36, 29]);
+        else writeLines(block.text, 10.5, 4, [23, 36, 29]);
+      });
+      pdf.save(`${safeDocumentName(generatedText)}.pdf`);
+      setDocumentActionMessage("PDF 파일을 내려받았습니다.");
+    } catch (error) {
+      console.error(error);
+      setDocumentActionMessage("PDF 파일을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
-    printWindow.document.open();
-    printWindow.document.write(buildExportHtml(generatedText));
-    printWindow.document.close();
-    window.setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 300);
-    setDocumentActionMessage("인쇄 창에서 대상을 'PDF로 저장'으로 선택해 주세요.");
   };
 
   const reviewGeneratedDocument = async () => {
@@ -769,8 +823,8 @@ export default function Home() {
                 <div className="draft-tools" aria-label="문서 복사 및 내려받기">
                   <button type="button" onClick={copyGeneratedDocument}>복사</button>
                   <button type="button" onClick={downloadWordDocument}>Word</button>
-                  <button type="button" onClick={printGeneratedDocument}>PDF</button>
-                  <button type="button" onClick={downloadHangulDocument}>한글용</button>
+                  <button type="button" onClick={downloadPdfDocument}>PDF</button>
+                  <button type="button" onClick={downloadHangulDocument}>한글(HWPX)</button>
                 </div>
                 {documentActionMessage && <p className="document-action-message" role="status">{documentActionMessage}</p>}
                 <button className="review-button" type="button" onClick={reviewGeneratedDocument} disabled={reviewState === "loading"}>
