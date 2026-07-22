@@ -11,9 +11,9 @@ const firebaseConfig = {
   appId: "1:690963051022:web:1d6b4c30e31dd598f7825f",
 };
 
-const app = getApps()[0] ?? initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+export const firebaseApp = getApps()[0] ?? initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 
 export type CloudDocument = {
   id: string;

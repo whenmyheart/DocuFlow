@@ -24,29 +24,28 @@ test("server-renders the single-input document review prototype", async () => {
   const html = await response.text();
   assert.match(html, /<title>문서체크 \| 신청서 양식 본문 검토<\/title>/i);
   assert.match(html, /신청서 양식 전체 텍스트/);
-  assert.match(html, /본문 누락 검토하기/);
+  assert.match(html, /AI로 본문 검토하기/);
   assert.match(html, /문서 스타일 자동 구성/);
-  assert.match(html, /실제 AI가 아닌 규칙 기반 예시/);
-  assert.match(html, /검토 가능한 정보/);
+  assert.match(html, /AI가 본문 전체의 맥락을 읽습니다/);
+  assert.match(html, /AI 문맥 검토/);
   assert.doesNotMatch(html, /부서 피드백에서 확인할 가정과 질문/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
 
 test("keeps one document input and removes the starter preview", async () => {
-  const [page, packageJson] = await Promise.all([
+  const [page, aiReview, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/ai-review.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /id="documentText"/);
-  assert.match(page, /문의처 정보 누락/);
-  assert.match(page, /사이트 주소 누락/);
-  assert.match(page, /신청 기간 정보 누락/);
-  assert.match(page, /\(\?:\^\|\[\^\\d\]\)\\d\{1,2\}/);
-  assert.doesNotMatch(page, /\\d\{1,2\}\\s\*\[월\.\/-\]\\s\*\(\?:\\d\{1,2\}\\s\*일\?\)\?/);
-  assert.match(page, /제출처 정보 누락/);
-  assert.match(page, /첨부서류 정보 누락/);
-  assert.match(page, /비용 정보 누락/);
+  assert.match(page, /reviewDocumentWithAi/);
+  assert.doesNotMatch(page, /function analyzeDocument|const reviewRules/);
+  assert.match(aiReview, /GoogleAIBackend/);
+  assert.match(aiReview, /고정된 필수 항목 목록을 대입하지 마세요/);
+  assert.match(aiReview, /responseJsonSchema/);
+  assert.doesNotMatch(aiReview, /AIza/);
   assert.match(page, /형식은 자유입니다/);
   assert.match(page, /createStyledBlocks/);
   assert.match(page, /배포 문서 스타일 미리보기/);
@@ -58,7 +57,6 @@ test("keeps one document input and removes the starter preview", async () => {
   assert.match(page, /제목이나 문장을 클릭해 바로 수정/);
   assert.match(page, /emptyField/);
   assert.match(page, /styled-empty-field/);
-  assert.match(page, /담당부서\|담당자\|연락처/);
   assert.doesNotMatch(page, /id="formTitle"|id="audience"|id="applicationPeriod"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", templateRoot)));
