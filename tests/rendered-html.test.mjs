@@ -35,11 +35,15 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   ]);
   assert.match(page, /DOCUMENT_TYPES/);
   assert.match(page, /generateDocumentWithAi/);
-  assert.match(page, /id="generatedDocument"/);
+  assert.match(page, /DraftEditor/);
+  assert.match(page, /formatted-document/);
   assert.match(page, /saveCloudDocument/);
+  assert.match(page, /목록에 저장/);
+  assert.match(page, /searchDocumentsWithAi/);
   assert.match(page, /문서 종류 다시 선택/);
   assert.match(ai, /GoogleAIBackend/);
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
   assert.match(ai, /responseJsonSchema/);
+  assert.match(ai, /의미 기반 검색 도우미/);
   assert.doesNotMatch(ai, /reviewDocumentWithAi|AiReviewIssue|AIza/);
 });

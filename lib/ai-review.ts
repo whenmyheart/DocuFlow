@@ -12,6 +12,12 @@ export type AiGeneratedDocument = {
   summary: string;
 };
 
+export type SearchableDocument = {
+  id: string;
+  title: string;
+  text: string;
+};
+
 const responseJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -42,6 +48,28 @@ const model = getGenerativeModel(ai, {
     maxOutputTokens: 3072,
     responseMimeType: "application/json",
     responseJsonSchema,
+  },
+});
+
+const searchModel = getGenerativeModel(ai, {
+  model: "gemini-3.5-flash",
+  systemInstruction: [
+    "당신은 저장된 행정 문서를 찾아주는 의미 기반 검색 도우미입니다.",
+    "검색어가 문서에 그대로 포함되지 않아도 주제, 목적, 대상, 업무 맥락이 관련되면 결과에 포함하세요.",
+    "관련성이 높은 순서대로 문서 ID만 반환하고, 관련 없는 문서는 반환하지 마세요.",
+  ].join("\n"),
+  generationConfig: {
+    temperature: 0.05,
+    maxOutputTokens: 1024,
+    responseMimeType: "application/json",
+    responseJsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["documentIds"],
+      properties: {
+        documentIds: { type: "array", maxItems: 20, items: { type: "string" } },
+      },
+    },
   },
 });
 
@@ -80,4 +108,24 @@ export async function generateDocumentWithAi({
     content,
     summary: cleanText(parsed.summary, 240) || `${documentType} 초안을 작성했습니다.`,
   };
+}
+
+export async function searchDocumentsWithAi(query: string, documents: SearchableDocument[]): Promise<string[]> {
+  if (!query.trim() || !documents.length) return [];
+  const candidates = documents.slice(0, 40).map((document) => ({
+    id: document.id,
+    title: document.title.slice(0, 120),
+    text: document.text.replace(/\s+/g, " ").slice(0, 1200),
+  }));
+  const result = await searchModel.generateContent([
+    `검색어: ${query.trim().slice(0, 200)}`,
+    "저장 문서 목록:",
+    JSON.stringify(candidates),
+    "검색어와 의미상 관련된 문서 ID를 관련성 높은 순서로 반환하세요.",
+  ].join("\n\n"));
+  const parsed = JSON.parse(result.response.text()) as { documentIds?: unknown };
+  const validIds = new Set(candidates.map((document) => document.id));
+  return Array.isArray(parsed.documentIds)
+    ? parsed.documentIds.filter((id): id is string => typeof id === "string" && validIds.has(id))
+    : [];
 }

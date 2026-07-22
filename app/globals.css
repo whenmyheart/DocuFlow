@@ -102,8 +102,20 @@ button:disabled { cursor: wait; opacity: .72; }
 .complete-banner p { margin: 3px 0 0; color: #607268; font-size: 9px; line-height: 1.5; }
 .draft-label { margin: 19px 0 8px; display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: 11px; font-weight: 800; }
 .draft-label small { color: var(--muted); font-size: 8px; font-weight: 500; }
-#generatedDocument { width: 100%; min-height: 430px; padding: 22px; border: 1px solid #b9cbbf; border-radius: 8px; background: white; color: #27372e; font-size: 12px; line-height: 1.9; outline: none; resize: vertical; }
-#generatedDocument:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(17,98,60,.08); }
+.formatted-document { width: 100%; min-height: 430px; max-height: 560px; padding: 34px 32px; overflow-y: auto; border: 1px solid #b9cbbf; border-radius: 8px; background: white; color: #27372e; outline: none; }
+.formatted-document:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(17,98,60,.08); }
+.formatted-document h3 { margin: 0 0 28px; padding-bottom: 18px; border-bottom: 2px solid var(--green); color: var(--green-dark); font-size: 25px; line-height: 1.35; letter-spacing: -.045em; }
+.formatted-document h4 { margin: 26px 0 10px; color: var(--green); font-size: 15px; line-height: 1.45; }
+.formatted-document p { margin: 0 0 10px; color: #35443b; font-size: 12px; line-height: 1.85; }
+.formatted-document [contenteditable="true"] { border-radius: 3px; outline: none; transition: background .15s, box-shadow .15s; }
+.formatted-document [contenteditable="true"]:hover { background: #f4f8f5; }
+.formatted-document [contenteditable="true"]:focus { background: #f4f8f5; box-shadow: 0 0 0 3px #f4f8f5; }
+.draft-information { margin: 8px 0; display: grid; grid-template-columns: 105px 1fr; overflow: hidden; border: 1px solid #d9e3dc; border-radius: 6px; font-size: 11px; line-height: 1.65; }
+.draft-information strong { padding: 10px 12px; background: var(--mint); color: var(--green-dark); }
+.draft-information span { padding: 10px 12px; }
+.formatted-document .draft-bullet { position: relative; padding-left: 17px; }
+.formatted-document .draft-bullet::before { position: absolute; left: 2px; color: var(--green); content: "•"; font-weight: 900; }
+.formatted-document .draft-important { margin: 15px 0; padding: 12px 14px; border-left: 3px solid var(--green); background: var(--mint); color: var(--green-dark); font-weight: 800; }
 .result-actions { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .result-actions button { min-height: 42px; border: 1px solid #b9cbbf; border-radius: 7px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
 .result-actions .save-button { border-color: var(--green); background: var(--green); color: white; }
@@ -117,6 +129,9 @@ button:disabled { cursor: wait; opacity: .72; }
 .search-box { max-width: 520px; height: 43px; margin-top: 23px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border: 1px solid #cbd8d0; border-radius: 8px; }
 .search-box span { color: var(--green); font-size: 20px; }
 .search-box input { width: 100%; border: 0; outline: 0; color: var(--ink); font-size: 11px; }
+.search-status { margin: 10px 0 0; color: var(--green); font-size: 9px; font-weight: 700; }
+.search-status.loading::before { display: inline-block; margin-right: 6px; content: "●"; animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
 .storage-message { margin: 14px 0 0; color: var(--green); font-size: 10px; font-weight: 700; }
 .saved-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .saved-card { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); }
@@ -165,7 +180,9 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
   .result-head { align-items: flex-start; }
   .result-empty { min-height: 360px; }
   .draft-label { align-items: flex-start; flex-direction: column; gap: 3px; }
-  #generatedDocument { min-height: 390px; padding: 16px; }
+  .formatted-document { min-height: 390px; padding: 24px 18px; }
+  .formatted-document h3 { font-size: 21px; }
+  .draft-information { grid-template-columns: 85px 1fr; }
   .result-actions { grid-template-columns: 1fr; }
   .storage-section { margin-inline: 10px; padding: 24px 18px; }
   .saved-grid { grid-template-columns: 1fr; }

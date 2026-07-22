@@ -7,7 +7,7 @@ import {
   saveCloudDocument,
   type CloudDocument,
 } from "@/lib/firebase-documents";
-import { generateDocumentWithAi } from "@/lib/ai-review";
+import { generateDocumentWithAi, searchDocumentsWithAi } from "@/lib/ai-review";
 
 type DocumentType = {
   id: string;
@@ -145,6 +145,58 @@ const DOCUMENT_TYPES: DocumentType[] = [
 ];
 
 type GenerationState = "idle" | "loading" | "complete" | "error";
+type SearchState = "idle" | "loading" | "complete" | "error";
+
+type DraftBlock = {
+  sourceIndex: number;
+  kind: "title" | "heading" | "information" | "bullet" | "important" | "body";
+  text: string;
+  label?: string;
+  value?: string;
+};
+
+function createDraftBlocks(text: string): DraftBlock[] {
+  const lines = text.split(/\r?\n/);
+  const firstContentIndex = lines.findIndex((line) => line.trim());
+
+  return lines.flatMap((rawLine, sourceIndex) => {
+    const line = rawLine.trim();
+    if (!line) return [];
+    if (sourceIndex === firstContentIndex) return [{ sourceIndex, kind: "title" as const, text: line.replace(/^\[|\]$/g, "") }];
+
+    const information = line.match(/^([^:：]{1,20})[:：]\s*(.+)$/);
+    if (information) return [{ sourceIndex, kind: "information" as const, text: line, label: information[1], value: information[2] }];
+    if (/^(?:[-•]|\d+[.)])\s*/.test(line)) return [{ sourceIndex, kind: "bullet" as const, text: line.replace(/^(?:[-•]|\d+[.)])\s*/, "") }];
+    if (/^(?:중요|주의|필수|반드시|마감)/.test(line)) return [{ sourceIndex, kind: "important" as const, text: line }];
+    if (line.length <= 30 && (!/[.!?。]$/.test(line) || /[:：]$/.test(line))) {
+      return [{ sourceIndex, kind: "heading" as const, text: line.replace(/[:：]$/, "") }];
+    }
+    return [{ sourceIndex, kind: "body" as const, text: line }];
+  });
+}
+
+function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null> }) {
+  const blocks = useMemo(() => createDraftBlocks(text), [text]);
+
+  const updateLine = (sourceIndex: number, value: string) => {
+    const lines = text.split(/\r?\n/);
+    lines[sourceIndex] = value.replace(/\s+/g, " ").trim();
+    onChange(lines.join("\n"));
+  };
+
+  return (
+    <div className="formatted-document" id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
+      {blocks.map((block) => {
+        if (block.kind === "title") return <h3 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h3>;
+        if (block.kind === "heading") return <h4 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h4>;
+        if (block.kind === "information") return <div className="draft-information" key={block.sourceIndex}><strong>{block.label}</strong><span contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `${block.label}: ${event.currentTarget.textContent ?? ""}`)}>{block.value}</span></div>;
+        if (block.kind === "bullet") return <p className="draft-bullet" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `- ${event.currentTarget.textContent ?? ""}`)}>{block.text}</p>;
+        if (block.kind === "important") return <p className="draft-important" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
+        return <p key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
+      })}
+    </div>
+  );
+}
 
 function formatSavedAt(savedAt: number) {
   return new Date(savedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
@@ -167,8 +219,10 @@ export default function Home() {
   const [savedDocuments, setSavedDocuments] = useState<CloudDocument[]>([]);
   const [storageMessage, setStorageMessage] = useState("저장 목록을 불러오는 중입니다.");
   const [searchQuery, setSearchQuery] = useState("");
+  const [aiSearchIds, setAiSearchIds] = useState<string[] | null>(null);
+  const [searchState, setSearchState] = useState<SearchState>("idle");
   const formRef = useRef<HTMLElement | null>(null);
-  const resultRef = useRef<HTMLTextAreaElement | null>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
 
   const selectedType = DOCUMENT_TYPES.find((type) => type.id === selectedTypeId) ?? null;
   const completedFieldCount = selectedType?.fields.filter((field) => fieldValues[field.id]?.trim()).length ?? 0;
@@ -185,7 +239,7 @@ export default function Home() {
     return () => { active = false; };
   }, []);
 
-  const filteredDocuments = useMemo(() => {
+  const directSearchDocuments = useMemo(() => {
     const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
     if (!terms.length) return savedDocuments;
     return savedDocuments.filter((document) => {
@@ -193,6 +247,43 @@ export default function Home() {
       return terms.every((term) => haystack.includes(term));
     });
   }, [savedDocuments, searchQuery]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query || !savedDocuments.length) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      searchDocumentsWithAi(query, savedDocuments)
+        .then((ids) => {
+          if (!active) return;
+          setAiSearchIds(ids);
+          setSearchState("complete");
+        })
+        .catch(() => {
+          if (!active) return;
+          setAiSearchIds(null);
+          setSearchState("error");
+        });
+    }, 650);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [savedDocuments, searchQuery]);
+
+  const updateSearchQuery = (value: string) => {
+    setSearchQuery(value);
+    setAiSearchIds(null);
+    setSearchState(value.trim() && savedDocuments.length ? "loading" : "idle");
+  };
+
+  const filteredDocuments = useMemo(() => {
+    if (!searchQuery.trim() || !aiSearchIds) return directSearchDocuments;
+    const byId = new Map(savedDocuments.map((document) => [document.id, document]));
+    return aiSearchIds.map((id) => byId.get(id)).filter((document): document is CloudDocument => Boolean(document));
+  }, [aiSearchIds, directSearchDocuments, savedDocuments, searchQuery]);
 
   const selectType = (type: DocumentType) => {
     setSelectedTypeId(type.id);
@@ -363,7 +454,7 @@ export default function Home() {
           </div>
 
           <aside className="result-panel" aria-live="polite">
-            <div className="panel-head result-head"><div><span>03</span><p>AI 초안</p></div><small>Firebase AI · 예시 결과</small></div>
+            <div className="panel-head result-head"><div><span>03</span><p>AI 초안</p></div><small>AI 작성 · 예시 결과</small></div>
             {generationState === "idle" && (
               <div className="result-empty"><div className="paper-icon"><i /><i /><i /><b>✦</b></div><h3>입력한 정보로<br />문서가 완성됩니다.</h3><p>왼쪽 항목을 입력하고 초안 만들기 버튼을 눌러주세요.</p></div>
             )}
@@ -376,10 +467,10 @@ export default function Home() {
             {generationState === "complete" && (
               <div className="result-complete">
                 <div className="complete-banner"><span>✓</span><div><strong>초안 작성 완료</strong><p>{generationSummary}</p></div></div>
-                <label className="draft-label" htmlFor="generatedDocument">생성된 문서 <small>내용을 직접 수정할 수 있습니다.</small></label>
-                <textarea id="generatedDocument" ref={resultRef} value={generatedText} onChange={(event) => setGeneratedText(event.target.value)} />
+                <div className="draft-label">생성된 문서 <small>제목이나 문장을 눌러 직접 수정할 수 있습니다.</small></div>
+                <DraftEditor text={generatedText} onChange={setGeneratedText} editorRef={resultRef} />
                 <div className="result-actions">
-                  <button className="save-button" type="button" onClick={saveGeneratedDocument}>Firebase에 저장</button>
+                  <button className="save-button" type="button" onClick={saveGeneratedDocument}>목록에 저장</button>
                   <button type="button" onClick={generate}>다시 작성</button>
                 </div>
               </div>
@@ -389,8 +480,16 @@ export default function Home() {
       )}
 
       <section className="storage-section" aria-labelledby="storage-heading">
-        <div className="storage-title"><div><span>저장 문서</span><h2 id="storage-heading">나중에 이어서 작성하세요.</h2><p>Firebase에 저장한 문서를 불러와 바로 수정할 수 있습니다.</p></div><strong>{savedDocuments.length}</strong></div>
-        <label className="search-box"><span>⌕</span><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="제목이나 내용으로 저장 문서 검색" /></label>
+        <div className="storage-title"><div><span>저장 목록</span><h2 id="storage-heading">나중에 이어서 작성하세요.</h2><p>목록에 저장한 문서를 불러와 바로 수정할 수 있습니다.</p></div><strong>{savedDocuments.length}</strong></div>
+        <label className="search-box"><span>⌕</span><input value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} placeholder="키워드나 관련 내용으로 AI 검색" /></label>
+        {searchQuery.trim() && (
+          <p className={`search-status ${searchState}`} role="status">
+            {searchState === "loading" && "AI가 키워드와 관련된 문서를 찾고 있습니다."}
+            {searchState === "complete" && `AI 의미 검색 결과 ${filteredDocuments.length}건`}
+            {searchState === "error" && "AI 검색에 실패해 키워드가 직접 포함된 결과를 보여줍니다."}
+            {searchState === "idle" && "입력을 마치면 AI가 의미상 관련된 문서까지 검색합니다."}
+          </p>
+        )}
         {storageMessage && <p className="storage-message" role="status">{storageMessage}</p>}
         {filteredDocuments.length ? (
           <div className="saved-grid">
