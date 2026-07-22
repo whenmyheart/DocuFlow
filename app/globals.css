@@ -62,7 +62,10 @@ button:disabled { cursor: wait; opacity: .72; }
 .input-panel { border-radius: 16px 0 0 16px; }
 .result-panel { border-left: 0; border-radius: 0 16px 16px 0; background: #fbfcfb; }
 .panel-head { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
-.panel-head > button { padding: 7px 0; border: 0; border-bottom: 1px solid #9db7a6; background: transparent; color: var(--green); font-size: 10px; font-weight: 800; }
+.panel-head-actions { display: flex; align-items: center; gap: 9px; }
+.panel-head-actions button { min-height: 32px; padding: 0 10px; border: 1px solid #b8cbbf; border-radius: 6px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
+.panel-head-actions .sample-fill-button { border-color: var(--green); background: var(--mint); }
+.panel-head-actions button:hover { border-color: var(--green); background: #f2f8f4; }
 .input-panel > h2 { margin: 28px 0 8px; font-size: 25px; letter-spacing: -.035em; }
 .panel-description { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .progress-row { margin: 27px 0 13px; display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
@@ -175,6 +178,8 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
   .creator { margin-inline: 10px; }
   .input-panel, .result-panel { min-height: auto; padding: 25px 18px; }
   .input-panel > h2 { font-size: 22px; }
+  .panel-head { align-items: flex-start; }
+  .panel-head-actions { align-items: stretch; flex-direction: column; }
   .field-grid { grid-template-columns: 1fr; }
   .field-grid label.wide { grid-column: auto; }
   .result-head { align-items: flex-start; }

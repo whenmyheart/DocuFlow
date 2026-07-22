@@ -144,6 +144,85 @@ const DOCUMENT_TYPES: DocumentType[] = [
   },
 ];
 
+const SAMPLE_VALUES: Record<string, Record<string, string>> = {
+  notice: {
+    subject: "여름방학 중앙도서관 운영 안내",
+    audience: "재학생 및 교직원",
+    organizer: "새롬대학교 학술정보팀",
+    schedule: "2026. 7. 27. ~ 2026. 8. 21., 평일 09:00~18:00",
+    location: "새롬대학교 중앙도서관",
+    method: "별도 신청 없이 학생증을 지참해 방문해 주세요.",
+    contact: "학술정보팀 02-1234-5678",
+  },
+  application: {
+    applicationName: "2026 교내 동아리 활동비 지원 신청서",
+    name: "김하늘",
+    studentId: "20261234",
+    phone: "010-1234-5678",
+    affiliation: "사회과학대학 행정학과",
+    purpose: "가을 정기 전시회 운영비 지원",
+    submission: "2026. 8. 10.까지 학생 포털로 제출",
+    contact: "학생지원과 02-1234-5678",
+  },
+  proposal: {
+    projectName: "캠퍼스 플리마켓 운영 기획",
+    proposer: "학생자치회",
+    target: "전체 재학생",
+    background: "학생 간 교류와 자원 순환을 활성화하기 위해 기획했습니다.",
+    goal: "참여 부스 30개 모집 및 재학생 300명 참여",
+    plan: "참가팀 모집, 부스 배치, 현장 안내와 안전 관리를 진행합니다.",
+    schedule: "2026년 9월 모집, 10월 행사 진행",
+    budget: "총 200만 원",
+  },
+  report: {
+    reportTitle: "2026 상반기 민원 만족도 조사 결과 보고",
+    author: "정책기획팀",
+    period: "2026. 1. ~ 6.",
+    purpose: "상반기 민원 서비스 성과와 개선 사항을 공유합니다.",
+    activities: "설문 520건 분석 및 담당자 인터뷰 12회",
+    results: "평균 만족도 4.3점, 응답 시간 18% 단축",
+    issues: "모바일 설문 응답률 개선이 필요합니다.",
+    next: "2026년 9월 개선안을 시범 운영합니다.",
+  },
+  minutes: {
+    meetingName: "제2차 축제 준비위원회",
+    dateTime: "2026. 8. 3. 14:00",
+    location: "본관 2층 회의실",
+    attendees: "김하늘, 이가람, 박새봄",
+    agenda: "행사 동선과 안전 관리 계획",
+    discussion: "입구를 정문으로 일원화하고 안내 표지를 추가합니다.",
+    decisions: "안전요원 8명을 배치하기로 결정했습니다.",
+    actions: "김하늘이 8월 7일까지 배치도를 수정합니다.",
+  },
+  event: {
+    eventName: "2026 진로 탐색 주간",
+    audience: "1~4학년 재학생",
+    host: "대학일자리센터",
+    dateTime: "2026. 9. 14. 10:00~17:00",
+    location: "학생회관 대강당",
+    program: "직무 상담, 현직자 특강, 모의 면접",
+    participation: "학생 포털에서 사전 신청하거나 현장에서 참여할 수 있습니다.",
+    contact: "대학일자리센터 02-1234-5678",
+  },
+  official: {
+    recipient: "각 학과장",
+    sender: "학생처장",
+    subject: "학생 설문조사 참여 협조 요청",
+    background: "교육 환경 개선을 위한 재학생 의견을 수렴하고자 합니다.",
+    request: "소속 학생에게 설문 링크를 안내해 주세요.",
+    deadline: "2026. 8. 14.까지",
+    contact: "학생지원과 김하늘 02-1234-5678",
+  },
+  custom: {
+    title: "새 학기 민원 접수 절차 안내",
+    author: "운영지원팀",
+    audience: "전 부서 구성원",
+    purpose: "변경된 민원 접수 절차를 안내합니다.",
+    details: "온라인 접수를 우선하며, 긴급 민원은 담당자에게 전화로 알려 주세요.",
+    contact: "운영지원팀 02-1234-5678",
+  },
+};
+
 type GenerationState = "idle" | "loading" | "complete" | "error";
 type SearchState = "idle" | "loading" | "complete" | "error";
 
@@ -200,6 +279,20 @@ function DraftEditor({ text, onChange, editorRef }: { text: string; onChange: (v
 
 function formatSavedAt(savedAt: number) {
   return new Date(savedAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function createBasicDraft(documentType: DocumentType, values: Record<string, string>) {
+  const filledFields = documentType.fields
+    .map((field) => ({ label: field.label, value: values[field.id]?.trim() ?? "" }))
+    .filter((field) => field.value);
+  const titleField = filledFields.find((field) => /제목|명|이름/.test(field.label)) ?? filledFields[0];
+  const title = titleField?.value || `${documentType.name} 초안`;
+  const details = filledFields.filter((field) => field !== titleField);
+  return {
+    title,
+    content: details.map((field) => `${field.label}: ${field.value}`).join("\n"),
+    summary: "AI 연결이 원활하지 않아 입력한 정보를 정리한 기본 초안을 만들었습니다. 내용을 확인한 뒤 다시 작성을 눌러 AI 초안을 재시도할 수 있습니다.",
+  };
 }
 
 function getFirebaseMessage(error: unknown) {
@@ -301,6 +394,16 @@ export default function Home() {
     setMessage("");
   };
 
+  const fillSample = () => {
+    if (!selectedType) return;
+    setFieldValues({ ...(SAMPLE_VALUES[selectedType.id] ?? {}) });
+    setAdditionalRequest("처음 보는 사람도 이해하기 쉽게, 친절하지만 간결한 어조로 작성해 주세요.");
+    setGeneratedText("");
+    setGenerationSummary("");
+    setGenerationState("idle");
+    setMessage("가상 예시 내용을 입력했습니다. 필요한 항목만 수정해 주세요.");
+  };
+
   const generate = async () => {
     if (!selectedType) return;
     const filledFields = selectedType.fields.filter((field) => fieldValues[field.id]?.trim());
@@ -323,9 +426,13 @@ export default function Home() {
       setGenerationState("complete");
       window.requestAnimationFrame(() => resultRef.current?.focus());
     } catch (error) {
-      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-      setMessage(code.includes("resource-exhausted") ? "요청이 많아 생성이 잠시 지연되고 있습니다. 잠시 후 다시 시도해 주세요." : "AI가 문서를 작성하지 못했습니다. 입력 내용은 유지되니 다시 시도해 주세요.");
-      setGenerationState("error");
+      console.error("AI draft generation failed", error);
+      const fallback = createBasicDraft(selectedType, fieldValues);
+      setGeneratedText(`${fallback.title}\n\n${fallback.content}`);
+      setGenerationSummary(fallback.summary);
+      setGenerationState("complete");
+      setMessage("AI 연결에 실패해 기본 초안을 표시했습니다. 입력 내용은 그대로 유지됩니다.");
+      window.requestAnimationFrame(() => resultRef.current?.focus());
     }
   };
 
@@ -423,7 +530,10 @@ export default function Home() {
           <div className="input-panel">
             <div className="panel-head">
               <div><span>02</span><p>정보 입력</p></div>
-              <button type="button" onClick={startOver}>문서 종류 다시 선택</button>
+              <div className="panel-head-actions">
+                <button className="sample-fill-button" type="button" onClick={fillSample}>✦ 예시 내용 채우기</button>
+                <button type="button" onClick={startOver}>문서 종류 다시 선택</button>
+              </div>
             </div>
             <h2>{selectedType.name}에 들어갈 정보를 알려주세요.</h2>
             <p className="panel-description">모든 항목을 채우지 않아도 됩니다. 입력한 정보만 사용해 초안을 작성합니다.</p>
