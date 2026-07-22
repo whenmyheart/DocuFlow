@@ -83,7 +83,7 @@ function cleanText(value: unknown, maxLength: number) {
 function improveDocumentSpacing(value: string) {
   return value
     .replace(/\r\n?/g, "\n")
-    .replace(/([.!?])\s+(?=\d+[.)]\s+)/g, "$1\n\n")
+    .replace(/([가-힣][.!?])\s+(?=\d+[.)]\s+[가-힣])/g, "$1\n\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .split("\n")

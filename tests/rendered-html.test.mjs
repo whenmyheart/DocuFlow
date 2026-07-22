@@ -47,6 +47,7 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
   assert.match(ai, /신청자가 빈칸을 직접 작성해 제출/);
   assert.match(ai, /improveDocumentSpacing/);
+  assert.ok(ai.includes("([가-힣][.!?])"));
   assert.match(ai, /responseJsonSchema/);
   assert.match(ai, /의미 기반 검색 도우미/);
   assert.doesNotMatch(ai, /reviewDocumentWithAi|AiReviewIssue|AIza/);
