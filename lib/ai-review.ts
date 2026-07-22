@@ -1,57 +1,36 @@
 import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
 import { firebaseApp } from "@/lib/firebase-documents";
 
-export type AiReviewIssue = {
-  id: string;
+export type DocumentFieldInput = {
   label: string;
-  appendLabel: string;
-  title: string;
-  evidence: string;
-  explanation: string;
-  fixExample: string;
+  value: string;
 };
 
-export type AiReviewResult = {
-  issues: AiReviewIssue[];
+export type AiGeneratedDocument = {
+  title: string;
+  content: string;
   summary: string;
 };
 
 const responseJsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "issues"],
+  required: ["title", "content", "summary"],
   properties: {
-    summary: { type: "string", description: "문서의 용도와 검토 결과를 한 문장으로 요약한 한국어 문장" },
-    issues: {
-      type: "array",
-      maxItems: 8,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["id", "label", "appendLabel", "title", "evidence", "explanation", "fixExample"],
-        properties: {
-          id: { type: "string", description: "영문 소문자와 하이픈으로 된 짧은 식별자" },
-          label: { type: "string", description: "누락된 정보 항목명" },
-          appendLabel: { type: "string", description: "본문 하단에 추가할 '항목명:' 형식의 빈 입력 항목" },
-          title: { type: "string", description: "'정보 누락'으로 끝나는 짧은 제목" },
-          evidence: { type: "string", description: "누락 판단의 근거가 된 원문 속 문장 또는 구절" },
-          explanation: { type: "string", description: "왜 실제 정보가 필요하지만 빠졌는지 설명" },
-          fixExample: { type: "string", description: "가상 정보로 작성한 짧은 수정 예시" },
-        },
-      },
-    },
+    title: { type: "string", description: "완성된 문서의 명확한 제목" },
+    content: { type: "string", description: "제목을 제외한 완성된 한국어 문서 본문" },
+    summary: { type: "string", description: "작성 결과를 설명하는 짧은 한 문장" },
   },
 };
 
 const systemInstruction = [
-  "당신은 대한민국 공공기관의 신청서 양식 배포 전 검토자입니다.",
-  "본문 전체를 읽고 이 문서의 실제 용도와 사용 절차를 먼저 추론하세요.",
-  "고정된 필수 항목 목록을 대입하지 마세요. 본문이 독자에게 어떤 행동을 요구하거나 다른 위치의 정보를 참조하게 할 때만 그 행동에 필요한 구체 정보가 실제로 적혀 있는지 판단하세요.",
-  "예: '기간에 맞춰 제출', '기간은 하단에 기재'라고 했지만 날짜나 상시 접수 여부가 없으면 기간 누락입니다. 반대로 본문 어디든 실제 날짜가 있으면 누락이 아닙니다.",
-  "문의, 사이트, 제출처, 첨부서류, 비용뿐 아니라 계좌, 대상, 자격, 운영시간, 장소, 선정 기준 등 문맥상 필요한 다른 항목도 발견할 수 있습니다.",
-  "단순히 일반적인 신청서에 있으면 좋을 법한 정보는 추가하지 마세요. 원문 표현으로 필요성이 드러나는 항목만 지적하세요.",
-  "evidence는 반드시 원문에서 그대로 인용하고, fixExample은 실제 개인정보가 아닌 가상 예시를 사용하세요.",
-  "문서에 필요한 구체 정보가 모두 있으면 issues를 빈 배열로 반환하세요.",
+  "당신은 공공기관, 학교, 동아리, 행정부서에서 사용하는 문서를 작성하는 전문 행정 문서 편집자입니다.",
+  "사용자가 선택한 문서 종류와 입력한 정보를 바탕으로 즉시 배포 가능한 자연스러운 한국어 초안을 작성하세요.",
+  "입력하지 않은 날짜, 연락처, 금액, 사람 이름 등의 사실을 임의로 만들어내지 마세요.",
+  "빈 정보가 있으면 해당 내용을 억지로 채우거나 '미정'이라고 쓰지 말고, 문서 흐름상 자연스럽게 생략하세요.",
+  "문서 유형에 맞는 어조와 구조를 사용하세요. 공지는 핵심 안내와 행동 요청이 분명해야 하고, 보고서는 목적·내용·결과가 구분되어야 하며, 기획서는 배경·목표·실행 계획이 드러나야 합니다.",
+  "content에는 Markdown 기호를 쓰지 말고, 소제목과 문단을 줄바꿈으로 구분한 일반 텍스트만 반환하세요.",
+  "사용자가 적은 사실의 의미를 바꾸지 말고, 개인정보나 민감정보를 추가로 추론하지 마세요.",
 ].join("\n");
 
 const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });
@@ -59,8 +38,8 @@ const model = getGenerativeModel(ai, {
   model: "gemini-3.5-flash",
   systemInstruction,
   generationConfig: {
-    temperature: 0.1,
-    maxOutputTokens: 2048,
+    temperature: 0.35,
+    maxOutputTokens: 3072,
     responseMimeType: "application/json",
     responseJsonSchema,
   },
@@ -70,29 +49,35 @@ function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-function normalizeIssue(value: unknown, index: number): AiReviewIssue {
-  const issue = typeof value === "object" && value ? value as Record<string, unknown> : {};
-  const label = cleanText(issue.label, 40) || `누락 항목 ${index + 1}`;
-  const appendLabel = cleanText(issue.appendLabel, 50).replace(/[：:]?$/, ":");
+export async function generateDocumentWithAi({
+  documentType,
+  fields,
+  additionalRequest,
+}: {
+  documentType: string;
+  fields: DocumentFieldInput[];
+  additionalRequest: string;
+}): Promise<AiGeneratedDocument> {
+  const providedFields = fields.filter((field) => field.value.trim());
+  const fieldText = providedFields.map((field) => `- ${field.label}: ${field.value.trim()}`).join("\n");
+  const prompt = [
+    `문서 종류: ${documentType}`,
+    "사용자가 입력한 정보:",
+    fieldText || "- 입력된 세부 정보 없음",
+    additionalRequest.trim() ? `추가 요청:\n${additionalRequest.trim()}` : "추가 요청: 없음",
+    "위 정보만 사실로 사용해 완성된 문서 초안을 작성하세요.",
+  ].join("\n\n");
+
+  const result = await model.generateContent(prompt.slice(0, 14_000));
+  const parsed = JSON.parse(result.response.text()) as Record<string, unknown>;
+  const title = cleanText(parsed.title, 140);
+  const content = cleanText(parsed.content, 12_000);
+
+  if (!title || !content) throw new Error("invalid-ai-response");
 
   return {
-    id: cleanText(issue.id, 60).replace(/[^a-z0-9-]/gi, "-").toLowerCase() || `issue-${index + 1}`,
-    label,
-    appendLabel: appendLabel || `${label}:`,
-    title: cleanText(issue.title, 80) || `${label} 정보 누락`,
-    evidence: cleanText(issue.evidence, 300),
-    explanation: cleanText(issue.explanation, 300),
-    fixExample: cleanText(issue.fixExample, 200),
-  };
-}
-
-export async function reviewDocumentWithAi(text: string): Promise<AiReviewResult> {
-  const result = await model.generateContent(`다음은 행정 담당자가 배포하려는 신청서 양식의 전체 본문입니다.\n\n<document>\n${text.slice(0, 10_000)}\n</document>`);
-  const parsed = JSON.parse(result.response.text()) as { issues?: unknown[]; summary?: unknown };
-  const issues = Array.isArray(parsed.issues) ? parsed.issues.slice(0, 8).map(normalizeIssue) : [];
-
-  return {
-    issues,
-    summary: cleanText(parsed.summary, 300) || (issues.length ? "본문의 문맥상 필요한 정보 중 누락된 항목이 있습니다." : "본문의 문맥상 필요한 정보가 기재되어 있습니다."),
+    title,
+    content,
+    summary: cleanText(parsed.summary, 240) || `${documentType} 초안을 작성했습니다.`,
   };
 }
