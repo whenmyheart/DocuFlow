@@ -609,3 +609,255 @@ footer {
     display: block;
   }
 }
+
+/* Document studio layout: navigation, input and paper preview share one screen. */
+.hero {
+  display: none;
+}
+
+.topbar {
+  height: 58px;
+  padding-inline: max(22px, calc(50vw - 720px));
+  background: #fff;
+}
+
+.topbar > p {
+  display: block;
+}
+
+.studio-shell {
+  display: grid;
+  grid-template-columns: 218px minmax(0, 1fr);
+  width: min(1440px, calc(100% - 32px));
+  min-height: calc(100vh - 90px);
+  margin: 16px auto 54px;
+  border: 1px solid #d7d4cd;
+  background: #fff;
+}
+
+.studio-shell .type-section {
+  position: relative;
+  width: auto;
+  margin: 0;
+  padding: 28px 14px;
+  color: #f5f2eb;
+  background: #22211e;
+  border-right: 1px solid #22211e;
+}
+
+.studio-shell .section-heading {
+  display: block;
+  margin: 0 7px 22px;
+}
+
+.studio-shell .section-heading > div {
+  margin-bottom: 8px;
+  color: #9eb9c9;
+}
+
+.studio-shell .section-heading > div span {
+  display: none;
+}
+
+.studio-shell .section-heading > div p {
+  color: #9eb9c9;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.studio-shell .section-heading h2 {
+  color: #fff;
+  font-family: "Noto Sans KR", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.studio-shell .section-heading > p {
+  display: none;
+}
+
+.studio-shell .type-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.studio-shell .type-card {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 9px 10px;
+  color: #d6d2ca;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.studio-shell .type-card:hover {
+  color: #fff;
+  border-color: #55514a;
+  background: #2d2b27;
+  transform: none;
+}
+
+.studio-shell .type-card.selected {
+  color: #1e1d1a;
+  border-color: #f6f3ed;
+  background: #f6f3ed;
+  box-shadow: none;
+}
+
+.studio-shell .type-symbol {
+  grid-row: 1;
+  width: 27px;
+  height: 27px;
+  color: #9eb9c9;
+  border-color: #59646a;
+  font-size: 8px;
+}
+
+.studio-shell .type-card.selected .type-symbol {
+  color: var(--studio-blue);
+  border-color: #9db1bd;
+}
+
+.studio-shell .type-name {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  font-family: "Noto Sans KR", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.studio-shell .type-description,
+.studio-shell .type-action {
+  display: none;
+}
+
+.studio-shell .creator {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.88fr) minmax(500px, 1.12fr);
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: #fff;
+}
+
+.studio-shell .input-panel,
+.studio-shell .result-panel {
+  min-width: 0;
+  min-height: calc(100vh - 92px);
+  padding: 30px;
+}
+
+.studio-shell .input-panel {
+  background: #faf9f6;
+}
+
+.studio-shell .result-panel {
+  position: static;
+  top: auto;
+  border-left: 1px solid #d8d4cc;
+  background: #e9e7e2;
+}
+
+.studio-shell .input-panel > h2 {
+  max-width: 360px;
+  font-family: "Noto Sans KR", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.studio-shell .panel-head-actions button:last-child {
+  display: none;
+}
+
+.studio-shell .field-grid {
+  grid-template-columns: 1fr;
+}
+
+.studio-shell .field-grid label.wide {
+  grid-column: auto;
+}
+
+.studio-shell .formatted-document {
+  min-height: 520px;
+  max-height: 680px;
+}
+
+.studio-shell .result-empty {
+  min-height: 570px;
+}
+
+.waiting-section {
+  display: none;
+}
+
+.storage-section {
+  width: min(1224px, calc(100% - 40px));
+}
+
+@media (max-width: 1120px) {
+  .studio-shell {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .studio-shell .creator {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-shell .result-panel {
+    border-top: 1px solid #d8d4cc;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar > p {
+    display: none;
+  }
+
+  .studio-shell {
+    display: block;
+    width: 100%;
+    margin: 0 0 42px;
+    border-width: 0 0 1px;
+  }
+
+  .studio-shell .type-section {
+    padding: 22px 14px 16px;
+    border-right: 0;
+  }
+
+  .studio-shell .section-heading {
+    margin-bottom: 14px;
+  }
+
+  .studio-shell .section-heading h2 {
+    font-size: 16px;
+  }
+
+  .studio-shell .type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .studio-shell .type-card {
+    min-height: 48px;
+    padding: 7px 8px;
+  }
+
+  .studio-shell .input-panel,
+  .studio-shell .result-panel {
+    min-height: auto;
+    padding: 24px 17px;
+  }
+
+  .studio-shell .result-empty {
+    min-height: 390px;
+  }
+}

@@ -48844,7 +48844,7 @@ function zC(e) {
     : `저장 목록에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 function BC() {
-  let [e, t] = (0, v.useState)(``),
+  let [e, t] = (0, v.useState)(`notice`),
     [n, r] = (0, v.useState)({}),
     [i, a] = (0, v.useState)(``),
     [o, s] = (0, v.useState)(``),
@@ -49280,6 +49280,9 @@ function BC() {
           }),
         ],
       }),
+      (0, $.jsxs)(`div`, {
+        className: `studio-shell`,
+        children: [
       (0, $.jsxs)(`section`, {
         className: `type-section`,
         "aria-labelledby": `type-heading`,
@@ -49753,6 +49756,8 @@ function BC() {
               (0, $.jsx)(`span`, { children: `03 AI 초안 완성` }),
             ],
           }),
+        ],
+      }),
       (0, $.jsxs)(`section`, {
         className: `storage-section`,
         "aria-labelledby": `storage-heading`,
