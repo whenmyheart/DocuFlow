@@ -49236,13 +49236,13 @@ function BC() {
           (0, $.jsxs)(`a`, {
             className: `brand`,
             href: `#top`,
-            "aria-label": `DocuFlow 처음으로`,
+            "aria-label": `강남대학교 AI 문서작성 도우미 처음으로`,
             children: [
-              (0, $.jsx)(`span`, { children: `DF` }),
-              (0, $.jsx)(`strong`, { children: `DocuFlow` }),
+              (0, $.jsx)(`span`, { children: `KNU` }),
+              (0, $.jsx)(`strong`, { children: `강남대학교` }),
             ],
           }),
-          (0, $.jsx)(`p`, { children: `AI 문서 초안 작성 도구` }),
+          (0, $.jsx)(`p`, { children: `AI 문서작성 도우미` }),
         ],
       }),
       (0, $.jsxs)(`section`, {
@@ -49251,18 +49251,18 @@ function BC() {
         children: [
           (0, $.jsx)(`p`, {
             className: `eyebrow`,
-            children: `몇 가지 정보만 입력하면`,
+            children: `강남대학교 AI 문서작성 도우미`,
           }),
           (0, $.jsxs)(`h1`, {
             children: [
-              `빈 문서 앞에서 고민하지 마세요.`,
+              `학교 행정문서,`,
               (0, $.jsx)(`br`, {}),
-              (0, $.jsx)(`em`, { children: `초안은 AI가 작성합니다.` }),
+              (0, $.jsx)(`em`, { children: `AI로 빠르게 작성하세요.` }),
             ],
           }),
           (0, $.jsx)(`p`, {
             className: `hero-copy`,
-            children: `작성할 문서 종류를 고르고 알고 있는 내용을 입력하세요. 목적에 맞는 구성과 문장으로 완성된 초안을 만들어 드립니다.`,
+            children: `문서 종류를 선택하고 필요한 정보만 입력하세요. 학교 공통 양식에 맞춘 초안을 만들고 바로 검토·다운로드할 수 있습니다.`,
           }),
           (0, $.jsxs)(`div`, {
             className: `privacy-note`,
@@ -49979,7 +49979,7 @@ function BC() {
           }),
         }),
       (0, $.jsx)(`footer`, {
-        children: `DocuFlow · AI가 만든 문서는 배포 전 담당자가 최종 확인해 주세요.`,
+        children: `강남대학교 AI 문서작성 도우미 · AI가 만든 문서는 배포 전 담당자가 최종 확인해 주세요.`,
       }),
     ],
   });
