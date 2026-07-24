@@ -167,6 +167,87 @@ button:disabled { cursor: wait; opacity: .72; }
 .document-template-event { position: relative; padding-inline: 32px; border: 1px solid #999; text-align: center; }
 .document-template-event h3 { color: #111; border-color: #999; }
 .document-template-official h3 { color: #111; border-color: #9ba5a8; text-align: left; }
+.document-template-application,
+.document-template-proposal,
+.document-template-report,
+.document-template-minutes,
+.document-template-event,
+.document-template-official,
+.document-template-custom { padding: 42px 38px; border: 0; color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; text-align: left; }
+.document-template-application h3,
+.document-template-proposal h3,
+.document-template-report h3,
+.document-template-minutes h3,
+.document-template-event h3,
+.document-template-official h3,
+.document-template-custom h3 { position: relative; margin: 0 0 30px; padding: 12px 0 13px; border: 0; color: #111; font-size: 25px; line-height: 1.35; text-align: center; letter-spacing: -.03em; }
+.document-template-application h3::before,
+.document-template-application h3::after,
+.document-template-proposal h3::before,
+.document-template-proposal h3::after,
+.document-template-report h3::before,
+.document-template-report h3::after,
+.document-template-minutes h3::before,
+.document-template-minutes h3::after,
+.document-template-event h3::before,
+.document-template-event h3::after,
+.document-template-official h3::before,
+.document-template-official h3::after,
+.document-template-custom h3::before,
+.document-template-custom h3::after { position: absolute; right: 0; left: 0; height: 8px; background: linear-gradient(90deg, #111 0 27%, #0077b8 27% 100%); content: ""; }
+.document-template-application h3::before,
+.document-template-proposal h3::before,
+.document-template-report h3::before,
+.document-template-minutes h3::before,
+.document-template-event h3::before,
+.document-template-official h3::before,
+.document-template-custom h3::before { top: 0; }
+.document-template-application h3::after,
+.document-template-proposal h3::after,
+.document-template-report h3::after,
+.document-template-minutes h3::after,
+.document-template-event h3::after,
+.document-template-official h3::after,
+.document-template-custom h3::after { bottom: 0; }
+.document-template-application h4,
+.document-template-proposal h4,
+.document-template-report h4,
+.document-template-minutes h4,
+.document-template-event h4,
+.document-template-official h4,
+.document-template-custom h4 { margin: 18px 0 8px; padding: 0; border: 0; background: transparent; color: #111; font-size: 13px; text-align: left; }
+.document-template-application p,
+.document-template-proposal p,
+.document-template-report p,
+.document-template-minutes p,
+.document-template-event p,
+.document-template-official p,
+.document-template-custom p { margin: 0 0 16px; color: #111; font-size: 12px; line-height: 1.9; }
+.document-template-application .draft-information,
+.document-template-proposal .draft-information,
+.document-template-report .draft-information,
+.document-template-minutes .draft-information,
+.document-template-event .draft-information,
+.document-template-official .draft-information,
+.document-template-custom .draft-information { margin: 0 0 13px; display: block; border: 0; color: #111; }
+.document-template-application .draft-information:last-of-type,
+.document-template-proposal .draft-information:last-of-type,
+.document-template-report .draft-information:last-of-type,
+.document-template-minutes .draft-information:last-of-type { border-bottom: 0; }
+.document-template-application .draft-information strong,
+.document-template-proposal .draft-information strong,
+.document-template-report .draft-information strong,
+.document-template-minutes .draft-information strong,
+.document-template-event .draft-information strong,
+.document-template-official .draft-information strong,
+.document-template-custom .draft-information strong { display: inline; padding: 0; background: transparent; color: #111; font-weight: 800; }
+.document-template-application .draft-information span,
+.document-template-proposal .draft-information span,
+.document-template-report .draft-information span,
+.document-template-minutes .draft-information span,
+.document-template-event .draft-information span,
+.document-template-official .draft-information span,
+.document-template-custom .draft-information span { display: inline; padding: 0 0 0 4px; }
 .draft-tools { margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .draft-tools button { min-height: 37px; border: 1px solid #d0c7ba; border-radius: 999px; background: white; color: var(--green); font-size: 9px; font-weight: 800; }
 .draft-tools button:hover { border-color: var(--green); background: var(--mint); }

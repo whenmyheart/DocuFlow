@@ -351,7 +351,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     </tbody></table>
   );
 
-  if (documentTypeId === "notice") {
+  if (documentTypeId) {
     const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
     const introduction = introductionIndex >= 0 ? bodyBlocks[introductionIndex] : null;
     const detailBlocks = bodyBlocks.filter((block, index) => index !== introductionIndex && block.kind !== "information");
@@ -898,7 +898,7 @@ async function buildWordDocumentBlob({
   const bodyParagraphs = narrative.map((block) => paragraph(block.text, { bold: block.kind === "heading" || block.kind === "important", size: block.kind === "heading" ? 22 : 20, after: 120 }));
   const children: Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> = [];
 
-  if (documentTypeId === "notice") {
+  if (documentTypeId) {
     const [introductionBlock, ...remainingBlocks] = narrative;
     const introduction = introductionBlock ? paragraph(introductionBlock.text, { bold: introductionBlock.kind === "heading" || introductionBlock.kind === "important", size: introductionBlock.kind === "heading" ? 22 : 20, after: 120 }) : null;
     const footerDepartment = details.find((detail) => /담당|부서|기관|주관|작성/.test(detail.label))?.value ?? "담당 부서";

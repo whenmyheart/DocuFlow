@@ -131,7 +131,7 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /widowControl: false/);
   assert.match(pageSource, /new TableRow\(\{ cantSplit: false/);
   assert.match(pageSource, /TableLayoutType\.FIXED/);
-  assert.match(pageSource, /documentTypeId === "notice"/);
+  assert.match(pageSource, /if \(documentTypeId\)/);
   assert.match(pageSource, /documentTypeId === "application"/);
   assert.match(pageSource, /documentTypeId === "proposal"/);
   assert.match(pageSource, /documentTypeId === "report" \|\| documentTypeId === "minutes"/);
