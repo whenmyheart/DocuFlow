@@ -49251,18 +49251,18 @@ function BC() {
         children: [
           (0, $.jsx)(`p`, {
             className: `eyebrow`,
-            children: `강남대학교 AI 문서작성 도우미`,
+            children: `강남대학교 문서작성 스튜디오`,
           }),
           (0, $.jsxs)(`h1`, {
             children: [
-              `학교 행정문서,`,
+              `학교 문서를,`,
               (0, $.jsx)(`br`, {}),
-              (0, $.jsx)(`em`, { children: `AI로 빠르게 작성하세요.` }),
+              (0, $.jsx)(`em`, { children: `더 단정하게.` }),
             ],
           }),
           (0, $.jsx)(`p`, {
             className: `hero-copy`,
-            children: `문서 종류를 선택하고 필요한 정보만 입력하세요. 학교 공통 양식에 맞춘 초안을 만들고 바로 검토·다운로드할 수 있습니다.`,
+            children: `필요한 정보만 적으면 학교 공통 양식에 맞춰 초안을 정리합니다. 작성부터 검토와 내려받기까지 한 공간에서 차분하게 완성하세요.`,
           }),
           (0, $.jsxs)(`div`, {
             className: `privacy-note`,
