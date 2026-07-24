@@ -48844,7 +48844,7 @@ function zC(e) {
     : `저장 목록에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 function BC() {
-  let [e, t] = (0, v.useState)(`notice`),
+  let [e, t] = (0, v.useState)(``),
     [n, r] = (0, v.useState)({}),
     [i, a] = (0, v.useState)(``),
     [o, s] = (0, v.useState)(``),
@@ -49236,13 +49236,13 @@ function BC() {
           (0, $.jsxs)(`a`, {
             className: `brand`,
             href: `#top`,
-            "aria-label": `강남대학교 AI 문서작성 도우미 처음으로`,
+            "aria-label": `DocuFlow 처음으로`,
             children: [
-              (0, $.jsx)(`span`, { children: `KNU` }),
-              (0, $.jsx)(`strong`, { children: `강남대학교` }),
+              (0, $.jsx)(`span`, { children: `DF` }),
+              (0, $.jsx)(`strong`, { children: `DocuFlow` }),
             ],
           }),
-          (0, $.jsx)(`p`, { children: `AI 문서작성 도우미` }),
+          (0, $.jsx)(`p`, { children: `AI 문서 초안 작성 도구` }),
         ],
       }),
       (0, $.jsxs)(`section`, {
@@ -49251,18 +49251,18 @@ function BC() {
         children: [
           (0, $.jsx)(`p`, {
             className: `eyebrow`,
-            children: `강남대학교 문서작성 스튜디오`,
+            children: `몇 가지 정보만 입력하면`,
           }),
           (0, $.jsxs)(`h1`, {
             children: [
-              `학교 문서를,`,
+              `빈 문서 앞에서 고민하지 마세요.`,
               (0, $.jsx)(`br`, {}),
-              (0, $.jsx)(`em`, { children: `더 단정하게.` }),
+              (0, $.jsx)(`em`, { children: `초안은 AI가 작성합니다.` }),
             ],
           }),
           (0, $.jsx)(`p`, {
             className: `hero-copy`,
-            children: `필요한 정보만 적으면 학교 공통 양식에 맞춰 초안을 정리합니다. 작성부터 검토와 내려받기까지 한 공간에서 차분하게 완성하세요.`,
+            children: `작성할 문서 종류를 고르고 알고 있는 내용을 입력하세요. 목적에 맞는 구성과 문장으로 완성된 초안을 만들어 드립니다.`,
           }),
           (0, $.jsxs)(`div`, {
             className: `privacy-note`,
@@ -49280,9 +49280,6 @@ function BC() {
           }),
         ],
       }),
-      (0, $.jsxs)(`div`, {
-        className: `studio-shell`,
-        children: [
       (0, $.jsxs)(`section`, {
         className: `type-section`,
         "aria-labelledby": `type-heading`,
@@ -49756,8 +49753,6 @@ function BC() {
               (0, $.jsx)(`span`, { children: `03 AI 초안 완성` }),
             ],
           }),
-        ],
-      }),
       (0, $.jsxs)(`section`, {
         className: `storage-section`,
         "aria-labelledby": `storage-heading`,
@@ -49984,7 +49979,7 @@ function BC() {
           }),
         }),
       (0, $.jsx)(`footer`, {
-        children: `강남대학교 AI 문서작성 도우미 · AI가 만든 문서는 배포 전 담당자가 최종 확인해 주세요.`,
+        children: `DocuFlow · AI가 만든 문서는 배포 전 담당자가 최종 확인해 주세요.`,
       }),
     ],
   });
