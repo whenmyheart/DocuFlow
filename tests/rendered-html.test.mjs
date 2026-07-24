@@ -19,12 +19,11 @@ test("server-renders the AI document drafting service", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>DocuFlow \| AI 문서 초안 작성<\/title>/i);
-  assert.match(html, /어떤 문서를 작성할까요/);
-  assert.match(html, /공지문/);
-  assert.match(html, /신청서/);
-  assert.match(html, /기획서/);
-  assert.match(html, /보고서/);
-  assert.match(html, /AI 초안/);
+  assert.match(html, /빈 문서 앞에서 고민하지 마세요/);
+  assert.match(html, /초안은 AI가 작성합니다/);
+  assert.match(html, /문서 선택하러 가기/);
+  assert.match(html, /저장 목록 보기/);
+  assert.doesNotMatch(html, /어떤 문서를 작성할까요/);
   assert.doesNotMatch(html, /본문 누락 검토하기|규칙 기반/);
 });
 
@@ -34,6 +33,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
     readFile(new URL("../lib/ai-review.ts", import.meta.url), "utf8"),
   ]);
   assert.match(page, /DOCUMENT_TYPES/);
+  assert.match(page, /freeformInput/);
+  assert.match(page, /문서에 들어갈 기본 정보/);
+  assert.match(page, /자유 입력 방식/);
   assert.match(page, /generateDocumentWithAi/);
   assert.match(page, /DraftEditor/);
   assert.match(page, /formatted-document/);
@@ -76,6 +78,11 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /AI 검수하기/);
   assert.match(page, /본문 지우기/);
   assert.match(page, /clearDocument/);
+  assert.match(page, /AUTOSAVE_DRAFT_KEY/);
+  assert.match(page, /docuflow-current-draft/);
+  assert.match(page, /localStorage\.setItem/);
+  assert.match(page, /이전에 임시저장한 작업을 불러왔습니다/);
+  assert.match(page, /autosaved-draft-card/);
   assert.match(ai, /GoogleAIBackend/);
   assert.match(ai, /입력하지 않은 날짜, 연락처, 금액/);
   assert.match(ai, /입력된 항목이 하나뿐이어도/);
@@ -176,6 +183,8 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.doesNotMatch(cssSource, /format-hwpx[\s\S]{0,180}함초롬바탕/);
   assert.match(cssSource, /\.event-template \{[^}]*padding-inline: 19mm/);
   assert.doesNotMatch(cssSource, /\.event-template::before|border-inline: 4px solid #238caf/);
+  assert.match(cssSource, /\.autosave-message/);
+  assert.match(cssSource, /\.autosaved-draft-card/);
   assert.ok(template.length > 1000);
   assert.ok(font.length > 1000000);
 });
