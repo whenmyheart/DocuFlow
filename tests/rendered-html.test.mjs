@@ -64,8 +64,9 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /문서 주요 정보/);
   assert.match(page, /exportPreviewDetails/);
   assert.match(page, /official-notice-preview/);
-  assert.match(page, /공 지/);
-  assert.match(page, /운영 내용 및 일정/);
+  assert.match(page, /official-notice-rule/);
+  assert.match(page, /official-notice-list/);
+  assert.match(page, /official-notice-footer/);
   assert.match(page, /application-template/);
   assert.match(page, /proposal-template/);
   assert.match(page, /report-template/);
@@ -136,7 +137,7 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /documentTypeId === "report" \|\| documentTypeId === "minutes"/);
   assert.match(pageSource, /documentTypeId === "event"/);
   assert.match(pageSource, /documentTypeId === "official"/);
-  assert.match(pageSource, /noticeInformationTable/);
+  assert.match(pageSource, /noticeRuleTable/);
   assert.match(pageSource, /columnWidths: \[pageWidth\]/);
   assert.match(pageSource, /alignment: AlignmentType\.RIGHT/);
   assert.match(pageSource, /columnWidths: \[460, 660, 660, 660, 660\]/);
@@ -167,7 +168,8 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /clone\.style\.padding = "0"/);
   assert.match(pageSource, /eventInformationTable/);
   assert.doesNotMatch(pageSource, /remainingHeight|offsetY = remainingHeight - imageHeight/);
-  assert.match(pageSource, /운영 내용 및 일정/);
+  assert.match(pageSource, /noticeRuleTable/);
+  assert.match(pageSource, /formatKoreanDocumentDate/);
   const cssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(cssSource, /\.proposal-section \{[^}]*break-inside: avoid/);
   assert.match(cssSource, /\.template-table-row \{[^}]*page-break-inside: avoid/);

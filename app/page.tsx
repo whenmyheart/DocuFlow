@@ -291,6 +291,13 @@ function createDraftBlocks(text: string): DraftBlock[] {
   });
 }
 
+function formatKoreanDocumentDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}. ${month}. ${day}.`;
+}
+
 function DraftEditor({ text, onChange, editorRef, documentTypeId }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null>; documentTypeId: string }) {
   const blocks = useMemo(() => createDraftBlocks(text), [text]);
 
@@ -348,29 +355,36 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
     const introduction = introductionIndex >= 0 ? bodyBlocks[introductionIndex] : null;
     const detailBlocks = bodyBlocks.filter((block, index) => index !== introductionIndex && block.kind !== "information");
+    const footerDepartment = details.find((detail) => /담당|부서|기관|주관|작성/.test(detail.label))?.value ?? "담당 부서";
+    const noticeItems = [
+      ...details.map((detail) => ({ label: detail.label, value: detail.value })),
+      ...detailBlocks.map((block) => ({ label: block.kind === "heading" ? block.text : "기타사항", value: block.text })),
+    ].filter((item) => item.value.trim());
 
     return (
       <article className="export-preview-document official-notice-preview" aria-label="내보낼 문서 미리보기">
         <header className="official-notice-header">
-          <h1>공 지</h1>
-          <p className="official-notice-subject"><strong>제목:</strong> {titleBlock?.text ?? "공지"}</p>
+          <div className="official-notice-rule" aria-hidden="true"><span /></div>
+          <h1>{titleBlock?.text ?? "공지"}</h1>
+          <div className="official-notice-rule" aria-hidden="true"><span /></div>
         </header>
         {introduction && <div className="official-notice-intro">{renderBlock(introduction)}</div>}
-        <p className="official-notice-divider">- 다 음 -</p>
-        {details.length > 0 && (
-          <section className="preview-overview official-notice-section" aria-labelledby="preview-overview-heading">
-            <h2 id="preview-overview-heading"><span>1.</span> 운영 내용 및 일정</h2>
-            <div className="official-notice-table-head" aria-hidden="true"><strong>구분</strong><strong>내용</strong></div>
-            <div className="preview-overview-grid">
-              {details.map((detail) => <div className="preview-information" key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></div>)}
-            </div>
-          </section>
+        {noticeItems.length > 0 && (
+          <ol className="official-notice-list">
+            {noticeItems.map((item, index) => (
+              <li key={`${item.label}-${index}`}>
+                <strong>{item.label}:</strong>
+                <span>{item.value}</span>
+              </li>
+            ))}
+          </ol>
         )}
-        {detailBlocks.length > 0 && (
-          <section className="official-notice-section">
-            <h2><span>{details.length > 0 ? "2." : "1."}</span> 상세 안내</h2>
-            {detailBlocks.map(renderBlock)}
-          </section>
+        <footer className="official-notice-footer">
+          <p>{formatKoreanDocumentDate()}</p>
+          <strong>{footerDepartment}</strong>
+        </footer>
+        {detailBlocks.length === 0 && details.length === 0 && !introduction && (
+          <p className="official-notice-empty">공지 내용을 입력하면 안내 항목이 이 위치에 정리됩니다.</p>
         )}
       </article>
     );
@@ -820,22 +834,6 @@ async function buildWordDocumentBlob({
       new TableCell({ width: { size: 7022, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(blankValues ? "" : item.value, { after: 0 })] }),
     ] })),
   });
-  const noticeInformationTable = (rows: Array<{ label: string; value: string }>) => new Table({
-    width: { size: pageWidth, type: WidthType.DXA },
-    columnWidths: [2260, 7492],
-    layout: TableLayoutType.FIXED,
-    borders,
-    rows: [
-      new TableRow({ tableHeader: true, cantSplit: true, height: { value: 600, rule: HeightRule.ATLEAST }, children: [
-        new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("구분", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
-        new TableCell({ width: { size: 7492, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("내용", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
-      ] }),
-      ...rows.map((item) => new TableRow({ cantSplit: false, height: { value: 620, rule: HeightRule.ATLEAST }, children: [
-        new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "EAF0F8", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
-        new TableCell({ width: { size: 7492, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.value, { after: 0 })] }),
-      ] })),
-    ],
-  });
   const eventInformationTable = (rows: Array<{ label: string; value: string }>) => new Table({
     width: { size: pageWidth, type: WidthType.DXA },
     columnWidths: [1800, 7952],
@@ -876,6 +874,24 @@ async function buildWordDocumentBlob({
       new TableCell({ width: { size: 7952, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(value, { bold: true, after: 0 })] }),
     ] })],
   });
+  const noticeRuleTable = () => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [2600, pageWidth - 2600],
+    layout: TableLayoutType.FIXED,
+    borders: noBorders,
+    rows: [new TableRow({ cantSplit: true, height: { value: 125, rule: HeightRule.EXACT }, children: [
+      new TableCell({ width: { size: 2600, type: WidthType.DXA }, borders: noBorders, margins: { top: 0, bottom: 0, left: 0, right: 0 }, shading: { type: ShadingType.CLEAR, fill: "111111", color: "auto" }, children: [paragraph("", { after: 0 })] }),
+      new TableCell({ width: { size: pageWidth - 2600, type: WidthType.DXA }, borders: noBorders, margins: { top: 0, bottom: 0, left: 0, right: 0 }, shading: { type: ShadingType.CLEAR, fill: "0077B8", color: "auto" }, children: [paragraph("", { after: 0 })] }),
+    ] })],
+  });
+  const noticeItemParagraph = (index: number, label: string, value: string) => new Paragraph({
+    spacing: { before: index === 0 ? 80 : 170, after: 80, line: 330 },
+    indent: { hanging: 360, left: 360 },
+    children: [
+      new TextRun({ text: `${index + 1}. ${label}: `, bold: true, size: 21, font: "Malgun Gothic", color: "111111" }),
+      new TextRun({ text: value, size: 21, font: "Malgun Gothic", color: "111111" }),
+    ],
+  });
 
   const blocks = createDraftBlocks(text);
   const narrative = blocks.slice(1).filter((block) => block.kind !== "information");
@@ -883,41 +899,26 @@ async function buildWordDocumentBlob({
   const children: Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> = [];
 
   if (documentTypeId === "notice") {
-    const [introduction, ...remainingParagraphs] = bodyParagraphs;
+    const [introductionBlock, ...remainingBlocks] = narrative;
+    const introduction = introductionBlock ? paragraph(introductionBlock.text, { bold: introductionBlock.kind === "heading" || introductionBlock.kind === "important", size: introductionBlock.kind === "heading" ? 22 : 20, after: 120 }) : null;
+    const footerDepartment = details.find((detail) => /담당|부서|기관|주관|작성/.test(detail.label))?.value ?? "담당 부서";
+    const noticeItems = [
+      ...details.map((detail) => ({ label: detail.label, value: detail.value })),
+      ...remainingBlocks.map((block, index) => ({ label: block.kind === "heading" ? block.text : index === 0 ? "기타사항" : "안내사항", value: block.kind === "heading" ? "" : block.text })),
+    ].filter((item) => item.value.trim());
     children.push(
-      paragraph("공 지", { bold: true, size: 42, align: AlignmentType.CENTER, after: 340 }),
-      new Paragraph({
-        spacing: { after: 300, line: 300 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 10, color: "111111", space: 8 } },
-        children: [
-          new TextRun({ text: "제목:  ", bold: true, size: 23, font: "Malgun Gothic", color: "111111" }),
-          new TextRun({ text: title, bold: true, size: 23, font: "Malgun Gothic", color: "111111" }),
-        ],
-      }),
+      noticeRuleTable(),
+      paragraph(title, { bold: true, size: 34, align: AlignmentType.CENTER, after: 90 }),
+      noticeRuleTable(),
+      paragraph("", { after: 260 }),
     );
     if (introduction) children.push(introduction);
+    noticeItems.forEach((item, index) => children.push(noticeItemParagraph(index, item.label, item.value)));
     children.push(
-      paragraph("- 다 음 -", { size: 22, align: AlignmentType.CENTER, after: 260 }),
-      new Paragraph({
-        spacing: { before: 100, after: 120, line: 320 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "111111", space: 6 } },
-        children: [
-          new TextRun({ text: "1.  ", bold: true, size: 24, font: "Malgun Gothic", color: "2563B8" }),
-          new TextRun({ text: "운영 내용 및 일정", bold: true, size: 24, font: "Malgun Gothic", color: "111111" }),
-        ],
-      }),
+      paragraph("", { after: 420 }),
+      paragraph(formatKoreanDocumentDate(), { bold: true, size: 26, align: AlignmentType.CENTER, after: 80 }),
+      paragraph(footerDepartment, { bold: true, size: 26, align: AlignmentType.CENTER, after: 0 }),
     );
-    if (details.length) children.push(noticeInformationTable(details));
-    if (remainingParagraphs.length) {
-      children.push(new Paragraph({
-        spacing: { before: 280, after: 120, line: 320 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "111111", space: 6 } },
-        children: [
-          new TextRun({ text: `${details.length ? "2" : "1"}.  `, bold: true, size: 24, font: "Malgun Gothic", color: "2563B8" }),
-          new TextRun({ text: "상세 안내", bold: true, size: 24, font: "Malgun Gothic", color: "111111" }),
-        ],
-      }), ...remainingParagraphs);
-    }
   } else if (documentTypeId === "application") {
     const collection = details.find((detail) => /받을 정보|기재 항목/.test(detail.label));
     const formItems = collection?.value.split(/[,，/]/).map((item) => item.trim()).filter(Boolean) ?? [];
@@ -1102,40 +1103,42 @@ export default function Home() {
     .map((field) => ({ label: field.label, value: fieldValues[field.id].trim() })) ?? [], [fieldValues, selectedType]);
 
   useEffect(() => {
-    try {
-      const rawDraft = window.localStorage.getItem(AUTOSAVE_DRAFT_KEY);
-      if (!rawDraft) {
+    queueMicrotask(() => {
+      try {
+        const rawDraft = window.localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+        if (!rawDraft) {
+          setAutosaveReady(true);
+          return;
+        }
+        const draft = JSON.parse(rawDraft) as Partial<AutosavedDraft>;
+        const draftTypeId = typeof draft.selectedTypeId === "string" && DOCUMENT_TYPES.some((type) => type.id === draft.selectedTypeId)
+          ? draft.selectedTypeId
+          : "";
+        const hasDraftContent = Boolean(
+          draftTypeId &&
+          (
+            String(draft.freeformInput ?? "").trim() ||
+            String(draft.generatedText ?? "").trim() ||
+            String(draft.documentName ?? "").trim()
+          ),
+        );
+        if (hasDraftContent) {
+          setSelectedTypeId(draftTypeId);
+          setFreeformInput(String(draft.freeformInput ?? ""));
+          setAdditionalRequest(String(draft.additionalRequest ?? ""));
+          setGeneratedText(String(draft.generatedText ?? ""));
+          setGenerationSummary(String(draft.generationSummary ?? "이전에 임시저장한 작업을 불러왔습니다."));
+          setDocumentName(String(draft.documentName ?? ""));
+          setGenerationState(String(draft.generatedText ?? "").trim() ? "complete" : "idle");
+          setAppView("editor");
+          setAutosaveMessage("이전에 임시저장한 작업을 불러왔습니다.");
+        }
+      } catch {
+        window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+      } finally {
         setAutosaveReady(true);
-        return;
       }
-      const draft = JSON.parse(rawDraft) as Partial<AutosavedDraft>;
-      const draftTypeId = typeof draft.selectedTypeId === "string" && DOCUMENT_TYPES.some((type) => type.id === draft.selectedTypeId)
-        ? draft.selectedTypeId
-        : "";
-      const hasDraftContent = Boolean(
-        draftTypeId &&
-        (
-          String(draft.freeformInput ?? "").trim() ||
-          String(draft.generatedText ?? "").trim() ||
-          String(draft.documentName ?? "").trim()
-        ),
-      );
-      if (hasDraftContent) {
-        setSelectedTypeId(draftTypeId);
-        setFreeformInput(String(draft.freeformInput ?? ""));
-        setAdditionalRequest(String(draft.additionalRequest ?? ""));
-        setGeneratedText(String(draft.generatedText ?? ""));
-        setGenerationSummary(String(draft.generationSummary ?? "이전에 임시저장한 작업을 불러왔습니다."));
-        setDocumentName(String(draft.documentName ?? ""));
-        setGenerationState(String(draft.generatedText ?? "").trim() ? "complete" : "idle");
-        setAppView("editor");
-        setAutosaveMessage("이전에 임시저장한 작업을 불러왔습니다.");
-      }
-    } catch {
-      window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
-    } finally {
-      setAutosaveReady(true);
-    }
+    });
   }, []);
 
   useEffect(() => {
