@@ -237,6 +237,19 @@ type GenerationState = "idle" | "loading" | "complete" | "error";
 type SearchState = "idle" | "loading" | "complete" | "error";
 type ReviewState = "idle" | "loading" | "complete";
 type ExportPreviewFormat = "word" | "pdf" | "hwpx";
+type AppView = "landing" | "types" | "editor" | "storage";
+
+const AUTOSAVE_DRAFT_KEY = "docuflow-current-draft";
+
+type AutosavedDraft = {
+  selectedTypeId: string;
+  freeformInput: string;
+  additionalRequest: string;
+  generatedText: string;
+  generationSummary: string;
+  documentName: string;
+  savedAt: number;
+};
 
 const EXPORT_FORMAT_LABELS: Record<ExportPreviewFormat, string> = {
   word: "Word",
@@ -1056,8 +1069,10 @@ function getFirebaseMessage(error: unknown) {
 }
 
 export default function Home() {
+  const [appView, setAppView] = useState<AppView>("landing");
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [freeformInput, setFreeformInput] = useState("");
   const [additionalRequest, setAdditionalRequest] = useState("");
   const [generatedText, setGeneratedText] = useState("");
   const [generationSummary, setGenerationSummary] = useState("");
@@ -1075,14 +1090,78 @@ export default function Home() {
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
   const [editingSavedTitle, setEditingSavedTitle] = useState("");
+  const [autosaveReady, setAutosaveReady] = useState(false);
+  const [autosaveMessage, setAutosaveMessage] = useState("");
   const formRef = useRef<HTMLElement | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
 
   const selectedType = DOCUMENT_TYPES.find((type) => type.id === selectedTypeId) ?? null;
-  const completedFieldCount = selectedType?.fields.filter((field) => fieldValues[field.id]?.trim()).length ?? 0;
+  const freeformInfoCount = freeformInput.trim() ? 1 : 0;
   const exportPreviewDetails = useMemo(() => selectedType?.fields
     .filter((field) => fieldValues[field.id]?.trim() && !/(?:제목|신청서 이름|양식 이름)/.test(field.label))
     .map((field) => ({ label: field.label, value: fieldValues[field.id].trim() })) ?? [], [fieldValues, selectedType]);
+
+  useEffect(() => {
+    try {
+      const rawDraft = window.localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+      if (!rawDraft) {
+        setAutosaveReady(true);
+        return;
+      }
+      const draft = JSON.parse(rawDraft) as Partial<AutosavedDraft>;
+      const draftTypeId = typeof draft.selectedTypeId === "string" && DOCUMENT_TYPES.some((type) => type.id === draft.selectedTypeId)
+        ? draft.selectedTypeId
+        : "";
+      const hasDraftContent = Boolean(
+        draftTypeId &&
+        (
+          String(draft.freeformInput ?? "").trim() ||
+          String(draft.generatedText ?? "").trim() ||
+          String(draft.documentName ?? "").trim()
+        ),
+      );
+      if (hasDraftContent) {
+        setSelectedTypeId(draftTypeId);
+        setFreeformInput(String(draft.freeformInput ?? ""));
+        setAdditionalRequest(String(draft.additionalRequest ?? ""));
+        setGeneratedText(String(draft.generatedText ?? ""));
+        setGenerationSummary(String(draft.generationSummary ?? "이전에 임시저장한 작업을 불러왔습니다."));
+        setDocumentName(String(draft.documentName ?? ""));
+        setGenerationState(String(draft.generatedText ?? "").trim() ? "complete" : "idle");
+        setAppView("editor");
+        setAutosaveMessage("이전에 임시저장한 작업을 불러왔습니다.");
+      }
+    } catch {
+      window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+    } finally {
+      setAutosaveReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autosaveReady) return;
+    const hasDraftContent = Boolean(selectedTypeId && (freeformInput.trim() || generatedText.trim() || documentName.trim() || additionalRequest.trim()));
+    if (!hasDraftContent) {
+      window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const draft: AutosavedDraft = {
+        selectedTypeId,
+        freeformInput,
+        additionalRequest,
+        generatedText,
+        generationSummary,
+        documentName,
+        savedAt: Date.now(),
+      };
+      window.localStorage.setItem(AUTOSAVE_DRAFT_KEY, JSON.stringify(draft));
+      setAutosaveMessage("작성 중인 내용이 자동 임시저장되었습니다.");
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [additionalRequest, autosaveReady, documentName, freeformInput, generatedText, generationSummary, selectedTypeId]);
 
   useEffect(() => {
     let active = true;
@@ -1155,10 +1234,40 @@ export default function Home() {
     const byId = new Map(savedDocuments.map((document) => [document.id, document]));
     return aiSearchIds.map((id) => byId.get(id)).filter((document): document is CloudDocument => Boolean(document));
   }, [aiSearchIds, directSearchDocuments, savedDocuments, searchQuery]);
+  const hasAutosavedDraft = Boolean(selectedType && (freeformInput.trim() || generatedText.trim() || documentName.trim() || additionalRequest.trim()));
+
+  const clearAutosavedDraft = () => {
+    window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+    setAutosaveMessage("임시저장을 지웠습니다.");
+  };
+
+  const discardAutosavedDraft = () => {
+    window.localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+    setSelectedTypeId("");
+    setFieldValues({});
+    setFreeformInput("");
+    setAdditionalRequest("");
+    setGeneratedText("");
+    setGenerationSummary("");
+    setGenerationState("idle");
+    setReviewState("idle");
+    setReviewResult(null);
+    setDocumentActionMessage("");
+    setDocumentName("");
+    setAutosaveMessage("임시저장을 삭제했습니다.");
+  };
+
+  const resumeAutosavedDraft = () => {
+    if (!selectedType) return;
+    setAppView("editor");
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
 
   const selectType = (type: DocumentType) => {
+    setAppView("editor");
     setSelectedTypeId(type.id);
     setFieldValues({});
+    setFreeformInput("");
     setAdditionalRequest("");
     setGeneratedText("");
     setGenerationSummary("");
@@ -1168,17 +1277,25 @@ export default function Home() {
     setReviewResult(null);
     setDocumentActionMessage("");
     setDocumentName("");
-    window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    setAutosaveMessage("");
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
 
-  const updateField = (id: string, value: string) => {
-    setFieldValues((current) => ({ ...current, [id]: value }));
-    setMessage("");
+  const buildFreeformSample = (type: DocumentType) => {
+    const values = SAMPLE_VALUES[type.id] ?? {};
+    const lines = type.fields
+      .map((field) => {
+        const value = values[field.id]?.trim();
+        return value ? `${field.label}: ${value}` : "";
+      })
+      .filter(Boolean);
+    return lines.join("\n");
   };
 
   const fillSample = () => {
     if (!selectedType) return;
     setFieldValues({ ...(SAMPLE_VALUES[selectedType.id] ?? {}) });
+    setFreeformInput(buildFreeformSample(selectedType));
     setAdditionalRequest("처음 보는 사람도 이해하기 쉽게, 친절하지만 간결한 어조로 작성해 주세요.");
     setGeneratedText("");
     setGenerationSummary("");
@@ -1188,10 +1305,12 @@ export default function Home() {
     setReviewResult(null);
     setDocumentActionMessage("");
     setDocumentName("");
+    clearAutosavedDraft();
   };
 
   const clearDocument = () => {
     setFieldValues({});
+    setFreeformInput("");
     setAdditionalRequest("");
     setGeneratedText("");
     setGenerationSummary("");
@@ -1201,12 +1320,12 @@ export default function Home() {
     setReviewResult(null);
     setDocumentActionMessage("");
     setDocumentName("");
+    clearAutosavedDraft();
   };
 
   const generate = async () => {
     if (!selectedType) return;
-    const filledFields = selectedType.fields.filter((field) => fieldValues[field.id]?.trim());
-    if (!filledFields.length) {
+    if (!freeformInput.trim()) {
       setMessage("문서에 반영할 정보를 한 가지 이상 입력해 주세요.");
       return;
     }
@@ -1220,8 +1339,9 @@ export default function Home() {
     try {
       const result = await generateDocumentWithAi({
         documentType: selectedType.name,
-        fields: selectedType.fields.map((field) => ({ label: field.label, value: fieldValues[field.id] ?? "" })),
+        fields: [],
         additionalRequest,
+        freeformInput,
       });
       setGeneratedText(`${result.title}\n\n${result.content}`);
       setDocumentName(result.title);
@@ -1230,7 +1350,7 @@ export default function Home() {
       window.requestAnimationFrame(() => resultRef.current?.focus());
     } catch (error) {
       console.error("AI draft generation failed", error);
-      const fallback = createBasicDraft(selectedType, fieldValues);
+      const fallback = createBasicDraft(selectedType, { title: freeformInput.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "", details: freeformInput });
       setGeneratedText(`${fallback.title}\n\n${fallback.content}`);
       setDocumentName(fallback.title);
       setGenerationSummary(fallback.summary);
@@ -1370,14 +1490,18 @@ export default function Home() {
       const saved = await saveCloudDocument({ title, text: generatedText, savedAt: Date.now(), documentTypeId: selectedType?.id });
       setSavedDocuments((current) => [saved, ...current]);
       setStorageMessage("작성한 문서를 저장했습니다.");
+      setAppView("storage");
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     } catch (error) {
       setStorageMessage(getFirebaseMessage(error));
     }
   };
 
   const loadSavedDocument = (document: CloudDocument) => {
+    setAppView("editor");
     setSelectedTypeId(DOCUMENT_TYPES.some((type) => type.id === document.documentTypeId) ? document.documentTypeId! : "custom");
     setFieldValues({});
+    setFreeformInput(document.text);
     setAdditionalRequest("");
     setGeneratedText(document.text);
     setDocumentName(document.title);
@@ -1387,7 +1511,7 @@ export default function Home() {
     setReviewResult(null);
     setDocumentActionMessage("");
     window.requestAnimationFrame(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       resultRef.current?.focus();
     });
   };
@@ -1425,8 +1549,10 @@ export default function Home() {
   };
 
   const startOver = () => {
+    setAppView("types");
     setSelectedTypeId("");
     setFieldValues({});
+    setFreeformInput("");
     setAdditionalRequest("");
     setGeneratedText("");
     setGenerationSummary("");
@@ -1436,24 +1562,48 @@ export default function Home() {
     setReviewResult(null);
     setDocumentActionMessage("");
     setDocumentName("");
+    clearAutosavedDraft();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const showLanding = () => {
+    setAppView("landing");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const showTypes = () => {
+    setAppView("types");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const showStorage = () => {
+    setAppView("storage");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="DocuFlow 처음으로"><span>DF</span><strong>DocuFlow</strong></a>
-        <p>AI 문서 초안 작성 도구</p>
+        <button className="brand brand-button" type="button" onClick={showTypes} aria-label="DocuFlow 문서 목록으로"><span>DF</span><strong>DocuFlow</strong></button>
+        <nav className="topbar-nav" aria-label="주요 화면">
+          <button type="button" className={appView === "landing" ? "active" : ""} onClick={showLanding}>소개</button>
+          <button type="button" className={appView === "types" ? "active" : ""} onClick={showTypes}>문서 선택</button>
+          <button type="button" className={appView === "storage" ? "active" : ""} onClick={showStorage}>저장 목록</button>
+        </nav>
       </header>
 
-      <section className="hero" id="top">
+      {appView === "landing" && <section className="hero landing-page" id="top">
         <p className="eyebrow">몇 가지 정보만 입력하면</p>
         <h1>빈 문서 앞에서 고민하지 마세요.<br /><em>초안은 AI가 작성합니다.</em></h1>
         <p className="hero-copy">작성할 문서 종류를 고르고 알고 있는 내용을 입력하세요. 목적에 맞는 구성과 문장으로 완성된 초안을 만들어 드립니다.</p>
         <div className="privacy-note"><span aria-hidden="true">i</span><p><strong>가상 정보로 먼저 시험해 보세요.</strong> 생성 결과는 실제 배포 전에 내용과 개인정보를 꼭 확인해 주세요.</p></div>
-      </section>
+        <div className="landing-actions">
+          <button type="button" onClick={showTypes}>문서 선택하러 가기</button>
+          <button type="button" onClick={showStorage}>저장 목록 보기</button>
+        </div>
+      </section>}
 
-      <section className="type-section" aria-labelledby="type-heading">
+      {appView === "types" && <section className="type-section type-page" aria-labelledby="type-heading">
         <div className="section-heading">
           <div><span>01</span><p>문서 종류 선택</p></div>
           <h2 id="type-heading">어떤 문서를 작성할까요?</h2>
@@ -1475,13 +1625,15 @@ export default function Home() {
             </button>
           ))}
         </div>
-      </section>
+      </section>}
 
-      {!selectedType ? (
+      {appView === "types" && !selectedType && (
         <section className="waiting-section" aria-label="문서 종류 선택 안내">
           <span>01</span><i aria-hidden="true">→</i><span>02 정보 입력</span><i aria-hidden="true">→</i><span>03 AI 초안 완성</span>
         </section>
-      ) : (
+      )}
+
+      {appView === "editor" && selectedType && (
         <section className="creator" ref={formRef}>
           <div className="input-panel">
             <div className="panel-head">
@@ -1489,25 +1641,27 @@ export default function Home() {
               <div className="panel-head-actions">
                 <button className="sample-fill-button" type="button" onClick={fillSample}>✦ 예시 내용 채우기</button>
                 <button className="clear-document-button" type="button" onClick={clearDocument}>본문 지우기</button>
+                <button type="button" onClick={showStorage}>저장 목록</button>
                 <button type="button" onClick={startOver}>문서 종류 다시 선택</button>
               </div>
             </div>
             <h2>{selectedType.name}에 들어갈 정보를 알려주세요.</h2>
             <p className="panel-description">모든 항목을 채우지 않아도 됩니다. 입력한 정보만 사용해 초안을 작성합니다.</p>
 
-            <div className="progress-row"><strong>{completedFieldCount}개 입력됨</strong><span>{selectedType.fields.length}개 추천 항목</span></div>
+            <div className="progress-row"><strong>{freeformInfoCount}개 입력됨</strong><span>자유 입력 방식</span></div>
+            {autosaveMessage && <p className="autosave-message" role="status">{autosaveMessage}</p>}
             <div className="field-grid">
-              {selectedType.fields.map((field) => (
-                <label className={field.wide ? "wide" : ""} key={field.id}>
-                  <span>{field.label}</span>
-                  <input
-                    value={fieldValues[field.id] ?? ""}
-                    onChange={(event) => updateField(field.id, event.target.value)}
-                    placeholder={field.placeholder}
-                    autoComplete="off"
-                  />
-                </label>
-              ))}
+              <label className="wide freeform-input-field">
+                <span>문서에 들어갈 기본 정보</span>
+                <textarea
+                  value={freeformInput}
+                  onChange={(event) => {
+                    setFreeformInput(event.target.value);
+                    setMessage("");
+                  }}
+                  placeholder={`${selectedType.name}에 필요한 내용을 자유롭게 적어주세요.\n예: 문서 제목, 대상, 기간, 장소, 목적, 문의처, 반드시 들어갈 내용 등`}
+                />
+              </label>
               <label className="wide additional-field">
                 <span>추가 요청 <small>선택</small></span>
                 <textarea value={additionalRequest} onChange={(event) => setAdditionalRequest(event.target.value)} placeholder="예: 처음 보는 사람도 이해하기 쉽게, 친절하지만 간결한 어조로 작성해 주세요." />
@@ -1523,7 +1677,7 @@ export default function Home() {
           <aside className="result-panel" aria-live="polite">
             <div className="panel-head result-head"><div><span>03</span><p>AI 초안</p></div><small>AI 작성 · 예시 결과</small></div>
             {generationState === "idle" && (
-              <div className="result-empty"><div className="paper-icon"><i /><i /><i /><b>✦</b></div><h3>입력한 정보로<br />문서가 완성됩니다.</h3><p>왼쪽 항목을 입력하고 초안 만들기 버튼을 눌러주세요.</p></div>
+              <div className="result-empty"><div className="paper-icon"><i /><i /><i /><b>✦</b></div><h3>입력한 정보로<br />문서가 완성됩니다.</h3><p>왼쪽 텍스트 상자에 내용을 입력하고 초안 만들기 버튼을 눌러주세요.</p></div>
             )}
             {generationState === "loading" && (
               <div className="result-empty"><div className="ai-loader">✦</div><h3>문서의 목적과 내용을<br />구성하고 있습니다.</h3><p>입력한 사실만 사용해 자연스러운 초안을 작성합니다.</p></div>
@@ -1577,8 +1731,21 @@ export default function Home() {
         </section>
       )}
 
-      <section className="storage-section" aria-labelledby="storage-heading">
+      {appView === "storage" && <section className="storage-section storage-page" aria-labelledby="storage-heading">
         <div className="storage-title"><div><span>저장 목록</span><h2 id="storage-heading">나중에 이어서 작성하세요.</h2><p>목록에 저장한 문서를 불러와 바로 수정할 수 있습니다.</p></div><strong>{savedDocuments.length}</strong></div>
+        {hasAutosavedDraft && (
+          <article className="autosaved-draft-card">
+            <div>
+              <span>임시저장</span>
+              <h3>{documentName.trim() || selectedType?.name || "작성 중인 문서"}</h3>
+              <p>작성 중인 내용이 이 브라우저에 자동으로 임시저장되어 있습니다.</p>
+            </div>
+            <div>
+              <button type="button" onClick={resumeAutosavedDraft}>이어서 작성</button>
+              <button className="delete" type="button" onClick={discardAutosavedDraft}>임시저장 삭제</button>
+            </div>
+          </article>
+        )}
         <label className="search-box"><span>⌕</span><input value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} placeholder="문서명, 키워드 또는 관련 내용으로 AI 검색" /></label>
         {searchQuery.trim() && (
           <p className={`search-status ${searchState}`} role="status">
@@ -1609,7 +1776,7 @@ export default function Home() {
             ))}
           </div>
         ) : !storageMessage && <p className="no-documents">검색 결과가 없습니다.</p>}
-      </section>
+      </section>}
 
       {exportPreviewFormat && (
         <div

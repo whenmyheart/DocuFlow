@@ -175,17 +175,23 @@ export async function generateDocumentWithAi({
   documentType,
   fields,
   additionalRequest,
+  freeformInput,
 }: {
   documentType: string;
   fields: DocumentFieldInput[];
   additionalRequest: string;
+  freeformInput?: string;
 }): Promise<AiGeneratedDocument> {
   const providedFields = fields.filter((field) => field.value.trim());
   const fieldText = providedFields.map((field) => `- ${field.label}: ${field.value.trim()}`).join("\n");
+  const userInfoText = freeformInput?.trim()
+    ? freeformInput.trim().slice(0, 12_000)
+    : fieldText || "- 입력한 정보 없음";
   const prompt = [
     `문서 종류: ${documentType}`,
-    "사용자가 입력한 정보:",
-    fieldText || "- 입력된 세부 정보 없음",
+    "사용자가 하나의 텍스트 상자에 입력한 기본 정보:",
+    userInfoText,
+    "위 내용을 읽고 문서에 필요한 제목, 대상, 일정, 장소, 문의처, 목적, 작성 항목 등을 스스로 판단해 초안을 작성하세요.",
     additionalRequest.trim() ? `추가 요청:\n${additionalRequest.trim()}` : "추가 요청: 없음",
     documentType.includes("신청서")
       ? "위 정보로 담당자가 배포하고 신청자가 빈칸을 직접 작성해 제출할 수 있는 신청서 양식을 만드세요."
