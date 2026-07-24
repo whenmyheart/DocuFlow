@@ -1,8 +1,8 @@
 :root {
-  --ink: #141413;
+  --ink: #5b3a2d;
   --muted: #87867f;
-  --green: #141413;
-  --green-dark: #141413;
+  --green: #5b3a2d;
+  --green-dark: #472b21;
   --mint: #f0eee6;
   --soft: #f0eee6;
   --line: #b0aea5;
@@ -10,13 +10,13 @@
   --danger: #a94d38;
   --anthropic-ivory: #faf9f5;
   --anthropic-ivory-medium: #f0eee6;
-  --anthropic-slate: #141413;
+  --anthropic-slate: #5b3a2d;
   --anthropic-cloud: #87867f;
   --anthropic-cloud-medium: #b0aea5;
   --anthropic-oat: #e3dacc;
   --anthropic-clay: #d97757;
   --anthropic-accent: #c6613f;
-  --anthropic-hairline: rgba(20, 20, 19, 0.1);
+  --anthropic-hairline: rgba(91, 58, 45, 0.14);
 }
 
 html {
@@ -136,7 +136,7 @@ textarea {
 .hero-copy {
   max-width: 700px;
   margin-top: 32px;
-  color: #44433f;
+  color: #5f4a40;
   font-family: "Anthropic Serif", Georgia, "Noto Serif KR", serif;
   font-size: 20px;
   line-height: 1.4;
@@ -213,7 +213,7 @@ textarea {
   border: 1px solid transparent;
   border-radius: 16px;
   background: var(--anthropic-ivory-medium);
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 2px 2px rgba(91, 58, 45, 0.02);
 }
 
 .type-card:hover {
@@ -318,7 +318,7 @@ textarea {
 }
 
 .result-head {
-  border-bottom-color: rgba(20, 20, 19, 0.14);
+  border-bottom-color: rgba(91, 58, 45, 0.18);
 }
 
 .result-head > div {
@@ -393,7 +393,7 @@ textarea {
 .field-grid input:focus,
 .field-grid textarea:focus {
   border-color: var(--anthropic-slate);
-  box-shadow: 0 0 0 3px rgba(20, 20, 19, 0.1);
+  box-shadow: 0 0 0 3px rgba(91, 58, 45, 0.12);
 }
 
 .generate-button {
@@ -405,7 +405,7 @@ textarea {
 }
 
 .generate-button:hover {
-  background: #34332f;
+  background: #704c3c;
 }
 
 .result-empty {
@@ -482,7 +482,7 @@ textarea {
 .result-actions button,
 .review-button {
   color: var(--anthropic-slate);
-  border-color: rgba(20, 20, 19, 0.25);
+  border-color: rgba(91, 58, 45, 0.3);
   border-radius: 100vw;
   background: transparent;
 }
@@ -716,7 +716,7 @@ footer {
   justify-content: space-between;
   align-items: center;
   padding-bottom: 24px;
-  border-bottom: 1px solid rgba(20, 20, 19, 0.14);
+  border-bottom: 1px solid rgba(91, 58, 45, 0.18);
   color: var(--anthropic-accent);
   font-size: 12px;
   font-weight: 600;
@@ -738,8 +738,8 @@ footer {
 
 .hero-prompt {
   padding: 20px;
-  color: #4c4943;
-  border: 1px solid rgba(20, 20, 19, 0.16);
+  color: #60483d;
+  border: 1px solid rgba(91, 58, 45, 0.2);
   background: rgba(250, 249, 245, 0.58);
   border-radius: 16px;
   font-family: "Anthropic Serif", Georgia, "Noto Serif KR", serif;

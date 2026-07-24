@@ -1,9 +1,9 @@
 :root {
-  --school-blue: #0789cb;
-  --school-blue-dark: #006ba8;
-  --school-blue-soft: #dbe7f6;
-  --school-ink: #111;
-  --school-line: #777;
+  --school-blue: #a66a4f;
+  --school-blue-dark: #744838;
+  --school-blue-soft: #ead9cd;
+  --school-ink: #4b3025;
+  --school-line: #9a7b6b;
 }
 
 /* The editable result uses one school style for every document type. */
@@ -139,14 +139,14 @@
 }
 
 .kangnam-school-template .school-info-table thead th {
-  background: #cbd9ee;
+  background: #d8c0b1;
   text-align: center;
   font-weight: 800;
 }
 
 .kangnam-school-template .school-info-table tbody th {
   width: 29%;
-  background: #eef3fa;
+  background: #f3e9e1;
   text-align: center;
   font-weight: 700;
 }
@@ -173,7 +173,7 @@
 }
 
 .kangnam-school-template .school-important {
-  color: #063bd7;
+  color: #8b4d39;
   font-weight: 700;
 }
 
