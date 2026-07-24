@@ -49278,6 +49278,37 @@ function BC() {
               }),
             ],
           }),
+          (0, $.jsxs)(`aside`, {
+            className: `hero-composer`,
+            "aria-label": `AI 문서 작성 예시`,
+            children: [
+              (0, $.jsxs)(`div`, {
+                className: `hero-composer-head`,
+                children: [
+                  (0, $.jsx)(`span`, { children: `DOCUFLOW AI` }),
+                  (0, $.jsx)(`i`, { "aria-hidden": `true`, children: `●` }),
+                ],
+              }),
+              (0, $.jsx)(`p`, {
+                children: `어떤 문서가 필요하신가요?`,
+              }),
+              (0, $.jsx)(`div`, {
+                className: `hero-prompt`,
+                children: `재학생에게 수강신청 변경 기간을 안내하는 공지문을 작성해 주세요.`,
+              }),
+              (0, $.jsxs)(`ol`, {
+                children: [
+                  (0, $.jsx)(`li`, { children: `문서 종류 선택` }),
+                  (0, $.jsx)(`li`, { children: `필요한 정보 입력` }),
+                  (0, $.jsx)(`li`, { children: `학교 양식으로 완성` }),
+                ],
+              }),
+              (0, $.jsx)(`a`, {
+                href: `#type-heading`,
+                children: `문서 작성 시작하기 →`,
+              }),
+            ],
+          }),
         ],
       }),
       (0, $.jsxs)(`section`, {
