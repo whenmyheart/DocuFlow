@@ -49,9 +49,10 @@ test("uses Gemini generation and keeps editable, saved drafts", async () => {
   assert.match(page, /application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document/);
   assert.match(page, /downloadHangulDocument/);
   assert.match(page, /downloadPdfDocument/);
-  assert.match(page, /application\/hwp\+zip/);
+  assert.match(page, /application\/owpml/);
   assert.match(page, /getStyledPreviewMarkup/);
-  assert.match(page, /htmlToHwpx/);
+  assert.match(page, /HwpxWriter/);
+  assert.match(page, /createFromPlainText/);
   assert.match(page, /html2canvas/);
   assert.match(page, /전체 화면 미리보기/);
   assert.match(page, /exportPreviewFormat/);
@@ -95,6 +96,9 @@ test("supports editable saved document names", async () => {
   assert.match(firebaseDocuments, /updateCloudDocumentTitle/);
   assert.match(firebaseDocuments, /updateDoc/);
   assert.match(firebaseDocuments, /documentTypeId/);
+  const firestoreRules = await readFile(new URL("../firestore.rules", import.meta.url), "utf8");
+  assert.match(firestoreRules, /hasOnly\(\['title', 'text', 'savedAt', 'documentTypeId'\]\)/);
+  assert.match(firestoreRules, /'documentTypeId' in request\.resource\.data/);
 });
 
 test("ships compatible export assets and conversion libraries", async () => {
@@ -112,7 +116,12 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(packageJson, /"docx"/);
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(pageSource, /width: 11906, height: 16838/);
-  assert.match(pageSource, /margin: \{ top: 1134, right: 1077, bottom: 1134, left: 1077/);
+  assert.match(pageSource, /const verticalMargin = 794/);
+  assert.match(pageSource, /margin: \{ top: verticalMargin, right: 1077, bottom: verticalMargin, left: 1077/);
+  assert.match(pageSource, /keepLines: false/);
+  assert.match(pageSource, /keepNext: false/);
+  assert.match(pageSource, /widowControl: false/);
+  assert.match(pageSource, /new TableRow\(\{ cantSplit: false/);
   assert.match(pageSource, /TableLayoutType\.FIXED/);
   assert.match(pageSource, /documentTypeId === "notice"/);
   assert.match(pageSource, /documentTypeId === "application"/);
@@ -129,11 +138,27 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(pageSource, /subjectTable/);
   assert.match(pageSource, /createPaginatedPreviewPages/);
   assert.match(pageSource, /PaginatedExportPreview/);
-  assert.match(pageSource, /pageHeightPx = 257 \* 96 \/ 25\.4/);
-  assert.match(pageSource, /currentPage\.scrollHeight > pageHeightPx/);
+  assert.match(pageSource, /page\.style\.width = "210mm"/);
+  assert.match(pageSource, /page\.style\.height = "297mm"/);
+  assert.match(pageSource, /page\.scrollHeight <= page\.clientHeight \+ 2/);
+  assert.match(pageSource, /splitParagraphToFillPage/);
+  assert.match(pageSource, /splitTableToFillPage/);
+  assert.match(pageSource, /splitContainerToFillPage/);
+  assert.match(pageSource, /container\.classList\.contains\("template-section-block"\) && parent\.childElementCount > 0/);
+  assert.match(pageSource, /class=\"document-page-frame\"/);
+  assert.match(pageSource, /pageBorderTop: \{ style: BorderStyle\.SINGLE, size: 10, color: "666666", space: 18 \}/);
+  assert.match(pageSource, /pageBorderBottom: \{ style: BorderStyle\.SINGLE, size: 10, color: "666666", space: 18 \}/);
+  assert.match(pageSource, /carryHeading/);
+  assert.match(pageSource, /className="template-section-heading"/);
+  assert.match(pageSource, /className="template-section-content"/);
+  assert.match(pageSource, /getVisibleExportPreviewPages/);
+  assert.match(pageSource, /visiblePages\.map/);
+  assert.match(pageSource, /page-break-after:always/);
+  assert.match(pageSource, /pdf\.addImage\([^\n]+0, 0, 210, 297/);
   assert.match(pageSource, /pdf\.addImage/);
   assert.match(pageSource, /getStyledPreviewClone/);
   assert.match(pageSource, /clone\.style\.padding = "0"/);
+  assert.match(pageSource, /eventInformationTable/);
   assert.doesNotMatch(pageSource, /remainingHeight|offsetY = remainingHeight - imageHeight/);
   assert.match(pageSource, /운영 내용 및 일정/);
   const cssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -141,8 +166,34 @@ test("ships compatible export assets and conversion libraries", async () => {
   assert.match(cssSource, /\.template-table-row \{[^}]*page-break-inside: avoid/);
   assert.doesNotMatch(cssSource, /\.proposal-section \{[^}]*min-height/);
   assert.doesNotMatch(cssSource, /\.template-writing-area \{[^}]*min-height/);
+  assert.match(cssSource, /\.template-section-block \{[^}]*break-inside: avoid/);
+  assert.match(cssSource, /\.form-template \.template-section-body/);
+  assert.match(cssSource, /\.template-section-content \{[^}]*border: 1px solid #777;[^}]*border-top: 0/);
+  assert.match(cssSource, /\.export-preview-document \{[^}]*padding: 14mm 19mm/);
+  assert.match(cssSource, /\.export-preview-viewport \.document-page-frame \{[^}]*inset: 6mm;[^}]*border: 1\.25px solid #666/);
+  assert.doesNotMatch(cssSource, /\.proposal-template, \.report-template, \.minutes-template \{ padding-top:/);
   assert.match(cssSource, /format-hwpx[\s\S]*font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif/);
   assert.doesNotMatch(cssSource, /format-hwpx[\s\S]{0,180}함초롬바탕/);
+  assert.match(cssSource, /\.event-template \{[^}]*padding-inline: 19mm/);
+  assert.doesNotMatch(cssSource, /\.event-template::before|border-inline: 4px solid #238caf/);
   assert.ok(template.length > 1000);
   assert.ok(font.length > 1000000);
+});
+
+test("creates a readable standards-compliant HWPX download", async () => {
+  const { HwpxReader, HwpxWriter } = await import("@ssabrojs/hwpxjs");
+  const input = "DocuFlow HWPX compatibility check\n2026 campus club application form";
+  const bytes = await new HwpxWriter().createFromPlainText(input, {
+    title: "DocuFlow HWPX test",
+    creator: "DocuFlow",
+  });
+
+  assert.deepEqual(Array.from(bytes.slice(0, 4)), [0x50, 0x4b, 0x03, 0x04]);
+
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const reader = new HwpxReader();
+  await reader.loadFromArrayBuffer(buffer);
+  const text = await reader.extractText();
+  assert.match(text, /DocuFlow HWPX compatibility check/);
+  assert.match(text, /2026 campus club application form/);
 });

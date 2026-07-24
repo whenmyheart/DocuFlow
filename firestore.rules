@@ -6,12 +6,16 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['title', 'text', 'savedAt'])
+        && request.resource.data.keys().hasOnly(['title', 'text', 'savedAt', 'documentTypeId'])
+        && request.resource.data.keys().hasAll(['title', 'text', 'savedAt'])
         && request.resource.data.title is string
         && request.resource.data.title.size() <= 100
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 10000
-        && request.resource.data.savedAt is number;
+        && request.resource.data.savedAt is number
+        && (!('documentTypeId' in request.resource.data)
+          || (request.resource.data.documentTypeId is string
+            && request.resource.data.documentTypeId.size() <= 40));
     }
   }
 }

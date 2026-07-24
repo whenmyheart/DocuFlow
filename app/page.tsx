@@ -385,8 +385,18 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
       <article className="export-preview-document form-template proposal-template" aria-label="기획서 미리보기">
         <h1>{documentTitle}</h1>
         {detailRows(details.slice(0, 3))}
-        {details.slice(3).map((detail) => <section className="proposal-section" key={detail.label}><h2>{detail.label}</h2><p>{detail.value}</p></section>)}
-        {narrativeBlocks.length > 0 && <section className="proposal-section"><h2>세부 실행 내용</h2>{narrativeBlocks.map(renderBlock)}</section>}
+        {details.slice(3).map((detail) => (
+          <section className="template-section-block" key={detail.label}>
+            <h2 className="template-section-heading">{detail.label}</h2>
+            <p className="template-section-body">{detail.value}</p>
+          </section>
+        ))}
+        {narrativeBlocks.length > 0 && (
+          <section className="template-section-block">
+            <h2 className="template-section-heading">세부 실행 내용</h2>
+            <div className="template-section-content">{narrativeBlocks.map(renderBlock)}</div>
+          </section>
+        )}
       </article>
     );
   }
@@ -398,8 +408,18 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
         {titleWithApproval(isMinutes ? "회 의 록" : "보 고 서")}
         <table className="template-document-subject"><tbody><tr><th>{isMinutes ? "회의명" : "제목"}</th><td>{documentTitle}</td></tr></tbody></table>
         {detailRows(details.slice(0, isMinutes ? 4 : 3))}
-        <section className="template-writing-area"><h2>{isMinutes ? "회의 내용" : "보고 내용"}</h2>{narrativeBlocks.map(renderBlock)}</section>
-        {details.slice(isMinutes ? 4 : 3).map((detail) => <section className="template-writing-area compact" key={detail.label}><h2>{detail.label}</h2><p>{detail.value}</p></section>)}
+        {narrativeBlocks.length > 0 && (
+          <section className="template-section-block">
+            <h2 className="template-section-heading">{isMinutes ? "회의 내용" : "보고 내용"}</h2>
+            <div className="template-section-content">{narrativeBlocks.map(renderBlock)}</div>
+          </section>
+        )}
+        {details.slice(isMinutes ? 4 : 3).map((detail) => (
+          <section className="template-section-block" key={detail.label}>
+            <h2 className="template-section-heading">{detail.label}</h2>
+            <p className="template-section-body">{detail.value}</p>
+          </section>
+        ))}
       </article>
     );
   }
@@ -448,24 +468,35 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
   );
 }
 
-function PaginatedExportPreview({ text, details, documentTypeId }: { text: string; details: Array<{ label: string; value: string }>; documentTypeId: string }) {
+function PaginatedExportPreview({ text, details, documentTypeId, format }: { text: string; details: Array<{ label: string; value: string }>; documentTypeId: string; format: ExportPreviewFormat }) {
   const sourceRef = useRef<HTMLDivElement | null>(null);
   const [pages, setPages] = useState<Array<{ className: string; html: string }>>([]);
 
   useEffect(() => {
-    const source = sourceRef.current?.querySelector<HTMLElement>(".export-preview-document");
-    if (!source) return;
-    const host = document.createElement("div");
-    host.style.position = "fixed";
-    host.style.left = "-10000px";
-    host.style.top = "0";
-    host.style.width = "172mm";
-    host.style.visibility = "hidden";
-    document.body.appendChild(host);
-    const pageNodes = createPaginatedPreviewPages(source, host);
-    setPages(pageNodes.map((page) => ({ className: page.className, html: page.innerHTML })));
-    host.remove();
-  }, [details, documentTypeId, text]);
+    let cancelled = false;
+    const paginate = async () => {
+      await document.fonts?.ready;
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve())));
+      if (cancelled) return;
+      const source = sourceRef.current?.querySelector<HTMLElement>(".export-preview-document");
+      if (!source) return;
+      const host = document.createElement("div");
+      host.style.position = "fixed";
+      host.style.left = "-10000px";
+      host.style.top = "0";
+      host.style.width = "210mm";
+      host.style.visibility = "hidden";
+      document.body.appendChild(host);
+      const pageNodes = createPaginatedPreviewPages(source, host);
+      if (!cancelled) setPages(pageNodes.map((page) => ({
+        className: page.className,
+        html: `${page.innerHTML}<span class="document-page-frame" aria-hidden="true"></span>`,
+      })));
+      host.remove();
+    };
+    void paginate();
+    return () => { cancelled = true; };
+  }, [details, documentTypeId, format, text]);
 
   return (
     <>
@@ -505,8 +536,10 @@ const INLINE_EXPORT_STYLES = [
   "break-before", "break-after", "break-inside", "page-break-before", "page-break-after", "page-break-inside",
 ] as const;
 
-function getStyledPreviewClone() {
-  const source = document.querySelector<HTMLElement>(".export-preview-document");
+function getStyledPreviewClone(sourceOverride?: HTMLElement) {
+  const source = sourceOverride
+    ?? document.querySelector<HTMLElement>(".export-preview-overlay .export-preview-document")
+    ?? document.querySelector<HTMLElement>(".export-preview-document");
   if (!source) throw new Error("Export preview unavailable");
   const clone = source.cloneNode(true) as HTMLElement;
   const sourceElements = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
@@ -532,48 +565,193 @@ function getStyledPreviewClone() {
 }
 
 function getStyledPreviewMarkup() {
-  const clone = getStyledPreviewClone();
-  return clone.outerHTML;
+  const visiblePages = getVisibleExportPreviewPages();
+  if (visiblePages.length <= 1) return getStyledPreviewClone(visiblePages[0]).outerHTML;
+  return visiblePages.map((page, index) => {
+    const clone = getStyledPreviewClone(page);
+    const pageBreak = index < visiblePages.length - 1 ? "page-break-after:always;break-after:page;" : "";
+    return `<section style="${pageBreak}">${clone.outerHTML}</section>`;
+  }).join("");
 }
 
 function createPaginatedPreviewPages(source: HTMLElement, host: HTMLElement) {
-  const pageHeightPx = 257 * 96 / 25.4;
   const createPage = () => {
     const page = source.cloneNode(false) as HTMLElement;
     page.removeAttribute("aria-label");
-    page.style.width = "172mm";
-    page.style.maxWidth = "172mm";
-    page.style.height = "auto";
-    page.style.minHeight = "auto";
+    page.style.width = "210mm";
+    page.style.maxWidth = "210mm";
+    page.style.height = "297mm";
+    page.style.minHeight = "297mm";
     page.style.margin = "0";
-    page.style.padding = "0";
     page.style.border = "0";
     page.style.boxShadow = "none";
-    page.style.overflow = "visible";
+    page.style.overflow = "hidden";
     page.style.backgroundColor = "#ffffff";
     host.appendChild(page);
     return page;
   };
 
+  const fitsPage = (page: HTMLElement) => page.scrollHeight <= page.clientHeight + 2;
+  const splitParagraphToFillPage = (paragraph: HTMLElement, parent: HTMLElement, page: HTMLElement) => {
+    if (paragraph.tagName !== "P") return null;
+    const words = (paragraph.textContent ?? "").trim().split(/\s+/).filter(Boolean);
+    if (words.length < 2) return null;
+
+    const trial = paragraph.cloneNode(false) as HTMLElement;
+    parent.appendChild(trial);
+    let low = 1;
+    let high = words.length - 1;
+    let best = 0;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      trial.textContent = words.slice(0, middle).join(" ");
+      if (fitsPage(page)) {
+        best = middle;
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    trial.remove();
+    if (best === 0 || best >= words.length) return null;
+
+    const leading = paragraph.cloneNode(false) as HTMLElement;
+    leading.textContent = words.slice(0, best).join(" ");
+    parent.appendChild(leading);
+    const remainder = paragraph.cloneNode(false) as HTMLElement;
+    remainder.textContent = words.slice(best).join(" ");
+    return remainder;
+  };
+
+  const splitTableToFillPage = (table: HTMLElement, parent: HTMLElement, page: HTMLElement) => {
+    if (table.tagName !== "TABLE") return null;
+    const sourceBody = table.querySelector(":scope > tbody");
+    const rows = sourceBody ? Array.from(sourceBody.children) as HTMLElement[] : [];
+    if (rows.length < 2) return null;
+
+    const leading = table.cloneNode(true) as HTMLElement;
+    const leadingBody = leading.querySelector(":scope > tbody");
+    if (!leadingBody) return null;
+    leadingBody.replaceChildren();
+    parent.appendChild(leading);
+
+    let fittedRows = 0;
+    for (const row of rows) {
+      const rowClone = row.cloneNode(true) as HTMLElement;
+      leadingBody.appendChild(rowClone);
+      if (!fitsPage(page)) {
+        rowClone.remove();
+        break;
+      }
+      fittedRows += 1;
+    }
+    if (fittedRows === 0 || fittedRows >= rows.length) {
+      leading.remove();
+      return null;
+    }
+
+    const remainder = table.cloneNode(true) as HTMLElement;
+    const remainderBody = remainder.querySelector(":scope > tbody");
+    if (!remainderBody) {
+      leading.remove();
+      return null;
+    }
+    remainderBody.replaceChildren(...rows.slice(fittedRows).map((row) => row.cloneNode(true)));
+    return remainder;
+  };
+
+  const splitContainerToFillPage = (container: HTMLElement, parent: HTMLElement, page: HTMLElement) => {
+    if (!["DIV", "SECTION"].includes(container.tagName) || container.children.length < 2) return null;
+    if (container.classList.contains("template-section-block") && parent.childElementCount > 0) return null;
+    const children = Array.from(container.children) as HTMLElement[];
+    const leading = container.cloneNode(false) as HTMLElement;
+    parent.appendChild(leading);
+    let fittedChildren = 0;
+
+    for (const sourceChild of children) {
+      const child = sourceChild.cloneNode(true) as HTMLElement;
+      leading.appendChild(child);
+      if (fitsPage(page)) {
+        fittedChildren += 1;
+        continue;
+      }
+      child.remove();
+      const paragraphRemainder = splitParagraphToFillPage(child, leading, page);
+      if (paragraphRemainder) {
+        fittedChildren += 1;
+        const remainder = container.cloneNode(false) as HTMLElement;
+        remainder.appendChild(paragraphRemainder);
+        children.slice(fittedChildren).forEach((rest) => remainder.appendChild(rest.cloneNode(true)));
+        return remainder;
+      }
+      break;
+    }
+
+    if (fittedChildren === 0 || fittedChildren >= children.length) {
+      leading.remove();
+      return null;
+    }
+    const remainder = container.cloneNode(false) as HTMLElement;
+    children.slice(fittedChildren).forEach((child) => remainder.appendChild(child.cloneNode(true)));
+    return remainder;
+  };
+
+  const splitElementToFillPage = (element: HTMLElement, parent: HTMLElement, page: HTMLElement) =>
+    splitParagraphToFillPage(element, parent, page)
+    ?? splitTableToFillPage(element, parent, page)
+    ?? splitContainerToFillPage(element, parent, page);
+
   const pages: HTMLElement[] = [];
   let currentPage = createPage();
-  Array.from(source.children).forEach((sourceChild) => {
-    const child = sourceChild.cloneNode(true) as HTMLElement;
+  const pending = Array.from(source.children).map((sourceChild) => sourceChild.cloneNode(true) as HTMLElement);
+  while (pending.length > 0) {
+    const child = pending.shift()!;
     currentPage.appendChild(child);
-    if (currentPage.scrollHeight > pageHeightPx + 2 && currentPage.childElementCount > 1) {
-      child.remove();
+    if (fitsPage(currentPage)) continue;
+
+    child.remove();
+    const splitRemainder = splitElementToFillPage(child, currentPage, currentPage);
+    if (splitRemainder) {
       pages.push(currentPage);
       currentPage = createPage();
-      currentPage.appendChild(child);
+      pending.unshift(splitRemainder);
+      continue;
     }
-  });
+
+    const previousChild = currentPage.lastElementChild as HTMLElement | null;
+    const carryHeading = previousChild?.classList.contains("template-section-heading") ? previousChild : null;
+    carryHeading?.remove();
+    if (currentPage.childElementCount > 0) pages.push(currentPage);
+    else currentPage.remove();
+    currentPage = createPage();
+    if (carryHeading) currentPage.appendChild(carryHeading);
+    currentPage.appendChild(child);
+
+    if (!fitsPage(currentPage)) {
+      child.remove();
+      const nextRemainder = splitElementToFillPage(child, currentPage, currentPage);
+      if (nextRemainder) {
+        pages.push(currentPage);
+        currentPage = createPage();
+        pending.unshift(nextRemainder);
+      } else {
+        currentPage.appendChild(child);
+      }
+    }
+  }
   if (currentPage.childElementCount > 0) pages.push(currentPage);
   else currentPage.remove();
   return pages;
 }
 
+function getVisibleExportPreviewPages() {
+  return Array.from(document.querySelectorAll<HTMLElement>(
+    ".export-preview-overlay .export-preview-pages > .export-preview-document",
+  ));
+}
+
 function buildPreviewExportHtml(markup: string, title: string) {
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:20mm 19mm}html,body{margin:0;padding:0;background:#fff;color:#111}table{border-collapse:collapse}*{box-sizing:border-box}@media print{article{min-height:auto!important}}</style></head><body>${markup}</body></html>`;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:14mm 19mm}html,body{margin:0;padding:0;background:#fff;color:#111}table{border-collapse:collapse}*{box-sizing:border-box}@media print{article{min-height:auto!important}}</style></head><body>${markup}</body></html>`;
 }
 
 async function buildWordDocumentBlob({
@@ -588,19 +766,23 @@ async function buildWordDocumentBlob({
   documentTypeId: string;
 }) {
   const {
-    AlignmentType, BorderStyle, Document, HeightRule, Packer, Paragraph, ShadingType,
+    AlignmentType, BorderStyle, Document, HeightRule, Packer, PageBorderDisplay, PageBorderOffsetFrom, PageBorderZOrder, Paragraph, ShadingType,
     Table, TableCell, TableLayoutType, TableRow, TextRun, VerticalAlign, WidthType,
   } = await import("docx");
   const pageWidth = 9752;
+  const verticalMargin = 794;
   const lineBorder = { style: BorderStyle.SINGLE, size: 4, color: "777777" };
   const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
   const borders = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder, insideHorizontal: lineBorder, insideVertical: lineBorder };
   const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder };
   const cellMargins = { top: 80, bottom: 80, left: 140, right: 140 };
-  const paragraph = (value: string, options: { bold?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number } = {}) => new Paragraph({
+  const paragraph = (value: string, options: { bold?: boolean; size?: number; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number } = {}) => new Paragraph({
     alignment: options.align,
+    keepLines: false,
+    keepNext: false,
+    widowControl: false,
     spacing: { after: options.after ?? 80, line: 300 },
-    children: [new TextRun({ text: value, bold: options.bold, size: options.size ?? 20, font: "Malgun Gothic", color: "111111" })],
+    children: [new TextRun({ text: value, bold: options.bold, size: options.size ?? 20, font: "Malgun Gothic", color: options.color ?? "111111" })],
   });
   const sectionHeading = (value: string) => new Table({
     width: { size: pageWidth, type: WidthType.DXA },
@@ -620,7 +802,7 @@ async function buildWordDocumentBlob({
     columnWidths: [2730, 7022],
     layout: TableLayoutType.FIXED,
     borders,
-    rows: rows.map((item) => new TableRow({ cantSplit: true, height: { value: blankValues ? 600 : 520, rule: HeightRule.ATLEAST }, children: [
+    rows: rows.map((item) => new TableRow({ cantSplit: false, height: { value: blankValues ? 600 : 520, rule: HeightRule.ATLEAST }, children: [
       new TableCell({ width: { size: 2730, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: blankValues ? "F0F0F0" : "E7E7E7", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
       new TableCell({ width: { size: 7022, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(blankValues ? "" : item.value, { after: 0 })] }),
     ] })),
@@ -635,11 +817,21 @@ async function buildWordDocumentBlob({
         new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("구분", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
         new TableCell({ width: { size: 7492, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E2F3", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph("내용", { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
       ] }),
-      ...rows.map((item) => new TableRow({ cantSplit: true, height: { value: 620, rule: HeightRule.ATLEAST }, children: [
+      ...rows.map((item) => new TableRow({ cantSplit: false, height: { value: 620, rule: HeightRule.ATLEAST }, children: [
         new TableCell({ width: { size: 2260, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "EAF0F8", color: "auto" }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, align: AlignmentType.CENTER, after: 0 })] }),
         new TableCell({ width: { size: 7492, type: WidthType.DXA }, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.value, { after: 0 })] }),
       ] })),
     ],
+  });
+  const eventInformationTable = (rows: Array<{ label: string; value: string }>) => new Table({
+    width: { size: pageWidth, type: WidthType.DXA },
+    columnWidths: [1800, 7952],
+    layout: TableLayoutType.FIXED,
+    borders: noBorders,
+    rows: rows.map((item) => new TableRow({ cantSplit: false, height: { value: 420, rule: HeightRule.ATLEAST }, children: [
+      new TableCell({ width: { size: 1800, type: WidthType.DXA }, borders: noBorders, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.label, { bold: true, color: "14769C", after: 0 })] }),
+      new TableCell({ width: { size: 7952, type: WidthType.DXA }, borders: noBorders, margins: cellMargins, verticalAlign: VerticalAlign.CENTER, children: [paragraph(item.value, { after: 0 })] }),
+    ] })),
   });
   const approvalBorder = { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder };
   const titleWithApproval = (value: string): Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> => [
@@ -736,11 +928,12 @@ async function buildWordDocumentBlob({
     const featured = details.filter((detail) => /일시|장소/.test(detail.label));
     const remaining = details.filter((detail) => !featured.includes(detail));
     children.push(
-      paragraph("EVENT INFORMATION", { bold: true, size: 18, align: AlignmentType.CENTER, after: 80 }),
-      paragraph(title, { bold: true, size: 40, align: AlignmentType.CENTER, after: 280 }),
+      paragraph("E V E N T   I N F O R M A T I O N", { size: 16, color: "555555", align: AlignmentType.CENTER, after: 140 }),
+      paragraph(title, { bold: true, size: 38, align: AlignmentType.CENTER, after: 180 }),
+      paragraph("-", { bold: true, size: 26, color: "238CAF", align: AlignmentType.CENTER, after: 180 }),
     );
-    if (featured.length) children.push(informationTable(featured));
-    if (bodyParagraphs.length) children.push(sectionHeading("행사 안내"), ...bodyParagraphs);
+    if (featured.length) children.push(eventInformationTable(featured));
+    if (bodyParagraphs.length) children.push(paragraph("", { after: 100 }), ...bodyParagraphs);
     if (remaining.length) children.push(sectionHeading("참여 정보"), informationTable(remaining));
   } else if (documentTypeId === "official") {
     children.push(...titleWithApproval("업무 협조공문"));
@@ -759,7 +952,17 @@ async function buildWordDocumentBlob({
     title,
     styles: { default: { document: { run: { font: "Malgun Gothic", size: 20, color: "111111" }, paragraph: { spacing: { line: 300, after: 80 } } } } },
     sections: [{
-      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1077, bottom: 1134, left: 1077, header: 0, footer: 0, gutter: 0 } } },
+      properties: { page: {
+        size: { width: 11906, height: 16838 },
+        margin: { top: verticalMargin, right: 1077, bottom: verticalMargin, left: 1077, header: 0, footer: 0, gutter: 0 },
+        borders: {
+          pageBorders: { display: PageBorderDisplay.ALL_PAGES, offsetFrom: PageBorderOffsetFrom.PAGE, zOrder: PageBorderZOrder.BACK },
+          pageBorderTop: { style: BorderStyle.SINGLE, size: 10, color: "666666", space: 18 },
+          pageBorderBottom: { style: BorderStyle.SINGLE, size: 10, color: "666666", space: 18 },
+          pageBorderLeft: { style: BorderStyle.SINGLE, size: 10, color: "666666", space: 18 },
+          pageBorderRight: { style: BorderStyle.SINGLE, size: 10, color: "666666", space: 18 },
+        },
+      } },
       children,
     }],
   });
@@ -1070,13 +1273,14 @@ export default function Home() {
   const downloadHangulDocument = async () => {
     setDocumentActionMessage("한글 파일을 만들고 있습니다.");
     try {
-      const { htmlToHwpx } = await import("@ssabrojs/hwpxjs");
+      const { HwpxWriter } = await import("@ssabrojs/hwpxjs");
       const title = documentName.trim() || safeDocumentName(generatedText);
-      const html = buildPreviewExportHtml(getStyledPreviewMarkup(), title);
-      const hwpx = await htmlToHwpx(html, { title, creator: "DocuFlow" });
+      // HTML/CSS를 HWPX로 직접 옮기면 한글 프로그램별 해석 차이로 파일이
+      // 손상된 것으로 처리될 수 있습니다. 전용 작성기로 표준 OWPML 구조를 생성합니다.
+      const hwpx = await new HwpxWriter().createFromPlainText(generatedText, { title, creator: "DocuFlow" });
       const hwpxBuffer = hwpx.buffer.slice(hwpx.byteOffset, hwpx.byteOffset + hwpx.byteLength) as ArrayBuffer;
-      downloadFile([hwpxBuffer], "application/hwp+zip", `${safeDocumentName(title)}.hwpx`);
-      setDocumentActionMessage("미리보기 구조와 서식을 반영한 한글 HWPX 파일을 내려받았습니다.");
+      downloadFile([hwpxBuffer], "application/owpml", `${safeDocumentName(title)}.hwpx`);
+      setDocumentActionMessage("한글 프로그램에서 열 수 있는 표준 HWPX 파일을 내려받았습니다.");
       setExportPreviewFormat(null);
     } catch (error) {
       console.error(error);
@@ -1088,31 +1292,40 @@ export default function Home() {
     setDocumentActionMessage("PDF 파일을 만들고 있습니다.");
     try {
       const [{ jsPDF }, { default: html2canvas }] = await Promise.all([import("jspdf"), import("html2canvas")]);
-      const exportNode = getStyledPreviewClone();
+      const visiblePages = getVisibleExportPreviewPages();
+      if (!visiblePages.length) throw new Error("Export preview unavailable");
       const renderHost = document.createElement("div");
       renderHost.style.position = "fixed";
       renderHost.style.left = "-10000px";
       renderHost.style.top = "0";
-      renderHost.style.width = "172mm";
+      renderHost.style.width = "210mm";
       renderHost.style.background = "#ffffff";
+      renderHost.className = "export-preview-viewport format-pdf";
+      renderHost.style.padding = "0";
+      renderHost.style.display = "block";
       document.body.appendChild(renderHost);
 
       const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
       try {
-        const pages = createPaginatedPreviewPages(exportNode, renderHost);
-        for (let index = 0; index < pages.length; index += 1) {
-          const canvas = await html2canvas(pages[index], {
+        for (let index = 0; index < visiblePages.length; index += 1) {
+          const page = visiblePages[index].cloneNode(true) as HTMLElement;
+          page.style.width = "210mm";
+          page.style.maxWidth = "210mm";
+          page.style.height = "297mm";
+          page.style.minHeight = "297mm";
+          page.style.margin = "0";
+          page.style.border = "0";
+          page.style.boxShadow = "none";
+          page.style.overflow = "hidden";
+          renderHost.replaceChildren(page);
+          const canvas = await html2canvas(page, {
             scale: 2,
             backgroundColor: "#ffffff",
             useCORS: true,
             logging: false,
           });
           if (index > 0) pdf.addPage("a4", "portrait");
-          const naturalHeight = canvas.height * 172 / canvas.width;
-          const renderHeight = Math.min(naturalHeight, 257);
-          const renderWidth = naturalHeight > 257 ? canvas.width * 257 / canvas.height : 172;
-          const renderX = 19 + (172 - renderWidth) / 2;
-          pdf.addImage(canvas.toDataURL("image/png"), "PNG", renderX, 20, renderWidth, renderHeight, undefined, "FAST");
+          pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297, undefined, "FAST");
         }
       } finally {
         renderHost.remove();
@@ -1423,7 +1636,7 @@ export default function Home() {
               <button type="button" className={exportPreviewFormat === "hwpx" ? "active" : ""} onClick={() => setExportPreviewFormat("hwpx")}>한글(HWPX)</button>
             </nav>
             <div className={`export-preview-viewport format-${exportPreviewFormat}`}>
-              <PaginatedExportPreview text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} />
+              <PaginatedExportPreview text={generatedText} details={exportPreviewDetails} documentTypeId={selectedType?.id ?? ""} format={exportPreviewFormat} />
             </div>
             <footer className="export-preview-actions">
               <p>미리보기와 내려받는 파일은 모두 A4 크기와 동일한 여백을 사용합니다.</p>

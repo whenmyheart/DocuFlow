@@ -202,8 +202,9 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .export-preview-viewport { min-width: 0; overflow: auto; padding: 34px; display: flex; align-items: flex-start; justify-content: center; }
 .export-preview-measure-source { position: fixed; left: -10000px; top: 0; width: 210mm; visibility: hidden; pointer-events: none; }
 .export-preview-pages { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.export-preview-pages > .export-preview-document { height: 297mm; min-height: 297mm; overflow: hidden; }
 .export-preview-pages::after { margin-top: -16px; color: #637268; font-size: 10px; content: attr(aria-label); }
-.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 20mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.8; }
+.export-preview-document { width: min(210mm, calc(100vw - 68px)); min-height: 297mm; padding: 14mm 19mm; flex: 0 0 auto; box-sizing: border-box; border: 1px solid #d5d8d6; background: white; box-shadow: 0 18px 55px rgba(10, 35, 20, .18); color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; line-height: 1.8; }
 .export-preview-document h1 { margin: 0 0 32px; padding-bottom: 18px; border-bottom: 3px solid var(--green); color: #111; font-size: 30px; line-height: 1.35; }
 .export-preview-document h2 { margin: 30px 0 12px; color: #111; font-size: 18px; }
 .export-preview-document p { margin: 0 0 17px; font-size: 13px; line-height: 1.9; }
@@ -234,7 +235,7 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .official-notice-section .preview-information strong { border-right: 1px solid #777; background: #f1f1f1; color: #111; }
 
 .template-title-with-approval { width: 100%; margin-bottom: 22px; display: flex; flex-direction: column; align-items: stretch; }
-.template-title-with-approval > h1 { width: 100%; margin-top: 18px !important; }
+.template-title-with-approval > h1 { width: 100%; margin-top: 18px !important; font-size: 24px !important; }
 .template-approval-cell { width: 250px; max-width: 42%; align-self: flex-end; }
 .template-approval { width: 100%; border-collapse: collapse; table-layout: fixed; color: #111; font-size: 9px; text-align: center; }
 .template-approval th, .template-approval td { width: 45px; height: 38px; padding: 5px 3px; border: 1px solid #777; }
@@ -251,17 +252,23 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .application-entry-grid th { width: 155px; background: #f0f0f0; text-align: center; }
 .template-writing-area { break-inside: avoid; page-break-inside: avoid; border: 1px solid #777; border-top: 0; }
 .template-writing-area > p { padding: 12px 15px; }
-.proposal-template > h1 { margin-bottom: 34px !important; font-size: 31px !important; }
+.form-template > p { margin: 0; padding: 10px 4px; font-size: 13px; line-height: 1.5; }
+.proposal-template > h1 { margin-bottom: 28px !important; font-size: 25px !important; }
 .proposal-section { margin-top: 18px; break-inside: avoid; page-break-inside: avoid; }
 .proposal-section h2 { margin: 0 !important; border: 1px solid #777 !important; }
 .proposal-section p { margin: 0 !important; padding: 12px 4px 4px; }
+.template-section-block { margin: 12px 0 0; break-inside: avoid; page-break-inside: avoid; }
+.export-preview-viewport .form-template .template-section-heading { margin: 0 !important; padding-block: 7px; break-after: avoid; page-break-after: avoid; }
+.form-template .template-section-body { margin: 0; padding: 12px 15px 14px; border: 1px solid #777; border-top: 0; }
+.template-section-content { padding: 12px 15px 14px; border: 1px solid #777; border-top: 0; }
+.template-section-content > p { margin: 0 0 12px; padding: 0; }
+.template-section-content > p:last-child { margin-bottom: 0; }
+.report-template .template-section-heading,
+.minutes-template .template-section-heading { border-bottom: 0 !important; }
 .template-document-subject { width: 100%; margin: 0 !important; border-collapse: collapse; }
 .template-document-subject th, .template-document-subject td { padding: 10px 12px; border: 1px solid #777; }
 .template-document-subject th { width: 155px; background: #e7e7e7; text-align: center; }
-.event-template { position: relative; overflow: hidden; padding-inline: 28mm; text-align: center; }
-.event-template::before, .event-template::after { position: absolute; inset-block: 0; width: 13mm; background: linear-gradient(135deg, #62b4dd, #1779ad 52%, #55add7); content: ""; }
-.event-template::before { left: 0; }
-.event-template::after { right: 0; }
+.event-template { position: relative; overflow: hidden; padding-inline: 19mm; text-align: center; }
 .event-kicker { color: #555; font-size: 11px; letter-spacing: .25em; }
 .export-preview-viewport .event-template h1 { margin: 35px 0 22px; padding: 0; border: 0; color: #111; font-size: 34px; text-align: center; }
 .event-accent { width: 32px; height: 3px; margin: 0 auto 26px; background: #238caf; }
@@ -286,7 +293,9 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .format-word .preview-important { border-left-color: #4472c4; background: #eef3f9; color: #111; }
 
 .export-preview-viewport.format-pdf { background: #e6eee9; }
-.format-pdf .export-preview-document { color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; }
+.format-pdf .export-preview-document { position: relative; color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; }
+.export-preview-viewport .export-preview-document { position: relative; }
+.export-preview-viewport .document-page-frame { position: absolute; z-index: 20; inset: 6mm; border: 1.25px solid #666; pointer-events: none; }
 .format-pdf .export-preview-document h1 { border-bottom-color: #11623c; color: #111; font-size: 30px; }
 .format-pdf .export-preview-document h2 { color: #111; }
 .format-pdf .preview-information strong { background: #e7f1ea; color: #111; }
