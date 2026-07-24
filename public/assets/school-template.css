@@ -1,0 +1,222 @@
+:root {
+  --school-blue: #0789cb;
+  --school-blue-dark: #006ba8;
+  --school-blue-soft: #dbe7f6;
+  --school-ink: #111;
+  --school-line: #777;
+}
+
+/* The editable result uses one school style for every document type. */
+.formatted-document.document-template-school {
+  color: var(--school-ink);
+  border-radius: 0;
+  font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif;
+}
+
+.formatted-document.document-template-school h3 {
+  color: var(--school-ink);
+  text-align: center;
+  border-top: 7px solid var(--school-ink);
+  border-bottom: 7px solid var(--school-blue);
+  margin: 0 0 26px;
+  padding: 8px 12px;
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.formatted-document.document-template-school h4 {
+  color: var(--school-ink);
+  background: transparent;
+  border: 0;
+  margin: 22px 0 8px;
+  padding: 0;
+  font-size: 13px;
+  text-align: left;
+}
+
+.formatted-document.document-template-school .draft-information {
+  border-color: var(--school-line);
+  border-radius: 0;
+  margin: 0;
+}
+
+.formatted-document.document-template-school .draft-information strong {
+  color: var(--school-ink);
+  background: var(--school-blue-soft);
+}
+
+/* Shared A4 school notice used by Word/PDF/HWPX previews. */
+.export-preview-document.kangnam-school-template {
+  color: var(--school-ink);
+  padding: 16mm 20mm 18mm;
+  font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif;
+  line-height: 1.7;
+}
+
+.kangnam-school-template .school-title-frame {
+  position: relative;
+  margin: 0 0 22px;
+  padding: 10px 14px 11px;
+  text-align: center;
+}
+
+.kangnam-school-template .school-title-frame::before,
+.kangnam-school-template .school-title-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--school-ink) 0 76%,
+    var(--school-blue) 76% 100%
+  );
+}
+
+.kangnam-school-template .school-title-frame::before {
+  top: 0;
+}
+
+.kangnam-school-template .school-title-frame::after {
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    var(--school-ink) 0 28%,
+    var(--school-blue) 28% 100%
+  );
+}
+
+.export-preview-viewport .kangnam-school-template .school-title-frame h1 {
+  color: var(--school-ink);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.35;
+}
+
+.kangnam-school-template .school-intro {
+  max-width: 92%;
+  margin: 22px auto 25px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.75;
+}
+
+.kangnam-school-template .school-section {
+  margin: 21px 0 0;
+}
+
+.export-preview-viewport .kangnam-school-template .school-section > h2 {
+  color: var(--school-ink);
+  border: 0;
+  margin: 0 0 9px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.kangnam-school-template .school-section > h2 span {
+  margin-right: 5px;
+}
+
+.kangnam-school-template .school-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10.5px;
+}
+
+.kangnam-school-template .school-info-table th,
+.kangnam-school-template .school-info-table td {
+  border: 1px solid var(--school-line);
+  padding: 6px 8px;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.kangnam-school-template .school-info-table thead th {
+  background: #cbd9ee;
+  text-align: center;
+  font-weight: 800;
+}
+
+.kangnam-school-template .school-info-table tbody th {
+  width: 29%;
+  background: #eef3fa;
+  text-align: center;
+  font-weight: 700;
+}
+
+.kangnam-school-template .school-body {
+  padding-left: 14px;
+}
+
+.kangnam-school-template .school-body p {
+  margin: 0 0 7px;
+  font-size: 11.5px;
+  line-height: 1.75;
+}
+
+.kangnam-school-template .school-subheading {
+  padding-left: 18px;
+  text-indent: -18px;
+  font-weight: 700;
+}
+
+.kangnam-school-template .school-bullet {
+  padding-left: 18px;
+  text-indent: -12px;
+}
+
+.kangnam-school-template .school-important {
+  color: #063bd7;
+  font-weight: 700;
+}
+
+.kangnam-school-template .school-signature {
+  color: var(--school-ink);
+  margin-top: 42px;
+  padding: 0;
+  text-align: center;
+}
+
+.kangnam-school-template .school-signature time,
+.kangnam-school-template .school-signature strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.kangnam-school-template .school-signature strong {
+  font-size: 15px;
+}
+
+.format-word .kangnam-school-template,
+.format-pdf .kangnam-school-template,
+.format-hwpx .kangnam-school-template {
+  font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif;
+}
+
+.format-word .kangnam-school-template h1,
+.format-pdf .kangnam-school-template h1,
+.format-hwpx .kangnam-school-template h1 {
+  border: 0;
+}
+
+@media (max-width: 600px) {
+  .export-preview-document.kangnam-school-template {
+    padding: 28px 22px 34px;
+  }
+
+  .export-preview-viewport .kangnam-school-template .school-title-frame h1 {
+    font-size: 19px;
+  }
+
+  .kangnam-school-template .school-info-table {
+    font-size: 9px;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "docuflow-school-template",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "serve": "firebase emulators:start --only hosting",
+    "deploy": "firebase deploy --only hosting"
+  }
+}
