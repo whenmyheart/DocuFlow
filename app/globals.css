@@ -268,11 +268,18 @@ button:disabled { cursor: wait; opacity: .72; }
 .review-issue > div span { color: #a27936; font-family: Georgia, serif; font-size: 9px; }
 .review-issue > div strong { font-size: 10px; }
 .review-issue > p { margin: 7px 0; color: var(--muted); font-size: 9px; line-height: 1.65; }
-.review-suggestion { margin-top: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 7px; }
+.review-suggestion { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr) 112px; align-items: stretch; gap: 10px; }
 .review-issue small { padding: 8px 9px; display: block; border-radius: 5px; background: var(--soft); color: #52635a; font-size: 8px; line-height: 1.55; }
 .review-issue small b { margin-right: 6px; color: var(--green); }
-.review-suggestion button { min-width: 74px; padding: 0 10px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 8px; font-weight: 800; }
+.review-suggestion button { min-width: 112px; min-height: 38px; padding: 0 14px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: white; font-size: 10px; font-weight: 900; letter-spacing: -0.02em; }
 .review-suggestion button:hover { background: var(--green-dark); }
+.review-suggestion button.added { border-color: #15803d; background: #15803d; }
+.draft-added-highlight { animation: addedDraftHighlight 2.6s ease-out; border-radius: 6px; }
+.draft-information.draft-added-highlight { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16); }
+@keyframes addedDraftHighlight {
+  0%, 72% { background: #fff3bf; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18); }
+  100% { background: transparent; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
 .result-actions { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .result-actions button { min-height: 42px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
 .result-actions .save-button { border-color: var(--green); background: var(--green); color: white; }

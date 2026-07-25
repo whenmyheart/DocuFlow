@@ -298,8 +298,17 @@ function formatKoreanDocumentDate(date = new Date()) {
   return `${year}. ${month}. ${day}.`;
 }
 
-function DraftEditor({ text, onChange, editorRef, documentTypeId }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null>; documentTypeId: string }) {
+function DraftEditor({ text, onChange, editorRef, documentTypeId, highlightedText }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null>; documentTypeId: string; highlightedText?: string }) {
   const blocks = useMemo(() => createDraftBlocks(text), [text]);
+  const highlightedSourceIndex = useMemo(() => {
+    const target = highlightedText?.trim();
+    if (!target) return -1;
+    for (let index = blocks.length - 1; index >= 0; index -= 1) {
+      const block = blocks[index];
+      if (block.text.trim() === target || block.value?.trim() === target) return block.sourceIndex;
+    }
+    return -1;
+  }, [blocks, highlightedText]);
 
   const updateLine = (sourceIndex: number, value: string) => {
     const lines = text.split(/\r?\n/);
@@ -307,15 +316,19 @@ function DraftEditor({ text, onChange, editorRef, documentTypeId }: { text: stri
     onChange(lines.join("\n"));
   };
 
+  const highlightProps = (sourceIndex: number) => (
+    sourceIndex === highlightedSourceIndex ? { className: "draft-added-highlight", "data-review-highlight": "true" } : {}
+  );
+
   return (
     <div className={`formatted-document document-template-${documentTypeId}`} id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
       {blocks.map((block) => {
-        if (block.kind === "title") return <h3 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h3>;
-        if (block.kind === "heading") return <h4 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h4>;
-        if (block.kind === "information") return <div className="draft-information" key={block.sourceIndex}><strong>{block.label}</strong><span contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `${block.label}: ${event.currentTarget.textContent ?? ""}`)}>{block.value}</span></div>;
-        if (block.kind === "bullet") return <p className="draft-bullet" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `- ${event.currentTarget.textContent ?? ""}`)}>{block.text}</p>;
-        if (block.kind === "important") return <p className="draft-important" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
-        return <p key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
+        if (block.kind === "title") return <h3 key={block.sourceIndex} {...highlightProps(block.sourceIndex)} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h3>;
+        if (block.kind === "heading") return <h4 key={block.sourceIndex} {...highlightProps(block.sourceIndex)} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h4>;
+        if (block.kind === "information") return <div className={`draft-information${block.sourceIndex === highlightedSourceIndex ? " draft-added-highlight" : ""}`} data-review-highlight={block.sourceIndex === highlightedSourceIndex ? "true" : undefined} key={block.sourceIndex}><strong>{block.label}</strong><span contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `${block.label}: ${event.currentTarget.textContent ?? ""}`)}>{block.value}</span></div>;
+        if (block.kind === "bullet") return <p className={`draft-bullet${block.sourceIndex === highlightedSourceIndex ? " draft-added-highlight" : ""}`} data-review-highlight={block.sourceIndex === highlightedSourceIndex ? "true" : undefined} key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `- ${event.currentTarget.textContent ?? ""}`)}>{block.text}</p>;
+        if (block.kind === "important") return <p className={`draft-important${block.sourceIndex === highlightedSourceIndex ? " draft-added-highlight" : ""}`} data-review-highlight={block.sourceIndex === highlightedSourceIndex ? "true" : undefined} key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
+        return <p key={block.sourceIndex} {...highlightProps(block.sourceIndex)} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
       })}
     </div>
   );
@@ -1081,6 +1094,8 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [reviewState, setReviewState] = useState<ReviewState>("idle");
   const [reviewResult, setReviewResult] = useState<AiDocumentReview | null>(null);
+  const [addedReviewSuggestions, setAddedReviewSuggestions] = useState<string[]>([]);
+  const [highlightedSuggestionText, setHighlightedSuggestionText] = useState("");
   const [documentActionMessage, setDocumentActionMessage] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [exportPreviewFormat, setExportPreviewFormat] = useState<ExportPreviewFormat | null>(null);
@@ -1095,6 +1110,11 @@ export default function Home() {
   const [autosaveMessage, setAutosaveMessage] = useState("");
   const formRef = useRef<HTMLElement | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
+
+  const clearReviewFeedback = () => {
+    setAddedReviewSuggestions([]);
+    setHighlightedSuggestionText("");
+  };
 
   const selectedType = DOCUMENT_TYPES.find((type) => type.id === selectedTypeId) ?? null;
   const freeformInfoCount = freeformInput.trim() ? 1 : 0;
@@ -1278,6 +1298,7 @@ export default function Home() {
     setMessage("");
     setReviewState("idle");
     setReviewResult(null);
+    clearReviewFeedback();
     setDocumentActionMessage("");
     setDocumentName("");
     setAutosaveMessage("");
@@ -1367,10 +1388,11 @@ export default function Home() {
     setGeneratedText(value);
     setReviewState("idle");
     setReviewResult(null);
+    clearReviewFeedback();
     setDocumentActionMessage("");
   };
 
-  const addReviewSuggestionToDocument = (issue: AiDocumentReview["issues"][number]) => {
+  const addReviewSuggestionToDocument = (issue: AiDocumentReview["issues"][number], issueKey: string) => {
     const suggestion = issue.suggestion?.trim();
     if (!suggestion) return;
 
@@ -1378,8 +1400,14 @@ export default function Home() {
       const trimmed = current.trimEnd();
       return `${trimmed}${trimmed ? "\n\n" : ""}${suggestion}`;
     });
+    setAddedReviewSuggestions((current) => current.includes(issueKey) ? current : [...current, issueKey]);
+    setHighlightedSuggestionText(suggestion);
     setDocumentActionMessage(`‘${issue.title}’ 수정 제안을 본문 하단에 추가했습니다.`);
-    window.requestAnimationFrame(() => resultRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      const highlightedElement = resultRef.current?.querySelector<HTMLElement>("[data-review-highlight='true']");
+      highlightedElement?.scrollIntoView({ block: "center", behavior: "smooth" });
+      resultRef.current?.focus();
+    });
   };
 
   const copyGeneratedDocument = async () => {
@@ -1485,6 +1513,7 @@ export default function Home() {
     if (!selectedType || !generatedText.trim()) return;
     setReviewState("loading");
     setReviewResult(null);
+    clearReviewFeedback();
     setDocumentActionMessage("");
     try {
       const result = await reviewGeneratedDocumentWithAi({ documentType: selectedType.name, text: generatedText });
@@ -1705,7 +1734,7 @@ export default function Home() {
                 <div className="complete-banner"><span>✓</span><div><strong>초안 작성 완료</strong><p>{generationSummary}</p></div></div>
                 <div className="draft-label">생성된 문서 <small>제목이나 문장을 눌러 직접 수정할 수 있습니다.</small></div>
                 <label className="document-name-editor"><span>문서명</span><input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="저장 목록에서 사용할 문서명을 입력해 주세요." /></label>
-                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} documentTypeId={selectedType.id} />
+                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} documentTypeId={selectedType.id} highlightedText={highlightedSuggestionText} />
                 <div className="draft-tools" aria-label="문서 복사 및 내려받기">
                   <button type="button" onClick={copyGeneratedDocument}>복사</button>
                   <button type="button" onClick={() => setExportPreviewFormat("word")} aria-haspopup="dialog">Word</button>
@@ -1725,18 +1754,21 @@ export default function Home() {
                     </div>
                     {reviewResult.issues.length > 0 && (
                       <div className="review-issues">
-                        {reviewResult.issues.map((issue, index) => (
-                          <article className={`review-issue ${issue.level}`} key={`${issue.title}-${index}`}>
+                        {reviewResult.issues.map((issue, index) => {
+                          const issueKey = `${issue.title}-${index}`;
+                          const isAdded = addedReviewSuggestions.includes(issueKey);
+                          return (
+                          <article className={`review-issue ${issue.level}`} key={issueKey}>
                             <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{issue.title}</strong></div>
                             <p>{issue.detail}</p>
                             {issue.suggestion && (
                               <div className="review-suggestion">
                                 <small><b>수정 제안</b>{issue.suggestion}</small>
-                                <button type="button" onClick={() => addReviewSuggestionToDocument(issue)}>본문에 추가</button>
+                                <button className={isAdded ? "added" : ""} type="button" aria-pressed={isAdded} onClick={() => addReviewSuggestionToDocument(issue, issueKey)}>{isAdded ? "✓ 추가됨" : "본문에 추가"}</button>
                               </div>
                             )}
                           </article>
-                        ))}
+                        );})}
                       </div>
                     )}
                   </section>
