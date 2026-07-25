@@ -421,6 +421,17 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
   }
 
   if (documentTypeId === "proposal") {
+    if (details.length === 0) {
+      return (
+        <article className="export-preview-document form-template proposal-template proposal-freeform-template" aria-label="기획서 미리보기">
+          <h1>{documentTitle}</h1>
+          <div className="proposal-freeform-body">
+            {bodyBlocks.length > 0 ? bodyBlocks.map(renderBlock) : <p>기획 내용을 입력하면 이 위치에 문서 본문이 표시됩니다.</p>}
+          </div>
+        </article>
+      );
+    }
+
     return (
       <article className="export-preview-document form-template proposal-template" aria-label="기획서 미리보기">
         <h1>{documentTitle}</h1>

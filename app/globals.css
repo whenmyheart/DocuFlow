@@ -388,6 +388,39 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .template-writing-area > p { padding: 12px 15px; }
 .form-template > p { margin: 0; padding: 10px 4px; font-size: 13px; line-height: 1.5; }
 .proposal-template > h1 { margin-bottom: 28px !important; font-size: 25px !important; }
+.proposal-freeform-template { padding-block: 22mm 18mm; }
+.proposal-freeform-template > h1 { margin-bottom: 30px !important; }
+.proposal-freeform-body { color: #111; font-size: 13px; line-height: 1.9; }
+.proposal-freeform-body p { margin: 0 0 15px; padding: 0; }
+.proposal-freeform-body .preview-bullet {
+  margin: 22px 0 12px;
+  color: #111;
+  font-weight: 700;
+}
+.export-preview-viewport .proposal-freeform-body h2 {
+  margin: 16px 0 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #111 !important;
+  font-size: 13px !important;
+  font-weight: 800;
+  text-align: left;
+}
+.proposal-freeform-body .preview-information {
+  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) 1fr;
+  border: 0;
+  color: #111;
+}
+.proposal-freeform-body .preview-information strong,
+.proposal-freeform-body .preview-information span {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.proposal-freeform-body .preview-information strong { font-weight: 800; }
 .proposal-section { margin-top: 18px; break-inside: avoid; page-break-inside: avoid; }
 .proposal-section h2 { margin: 0 !important; border: 1px solid #777 !important; }
 .proposal-section p { margin: 0 !important; padding: 12px 4px 4px; }
