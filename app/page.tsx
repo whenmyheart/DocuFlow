@@ -364,7 +364,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     </tbody></table>
   );
 
-  if (documentTypeId) {
+  if (documentTypeId === "notice") {
     const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
     const introduction = introductionIndex >= 0 ? bodyBlocks[introductionIndex] : null;
     const detailBlocks = bodyBlocks.filter((block, index) => index !== introductionIndex && block.kind !== "information");
