@@ -274,11 +274,11 @@ button:disabled { cursor: wait; opacity: .72; }
 .review-suggestion button { min-width: 112px; min-height: 38px; padding: 0 14px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: white; font-size: 10px; font-weight: 900; letter-spacing: -0.02em; }
 .review-suggestion button:hover { background: var(--green-dark); }
 .review-suggestion button.added { border-color: #15803d; background: #15803d; }
-.draft-added-highlight { animation: addedDraftHighlight 2.6s ease-out; border-radius: 6px; }
+.draft-added-highlight { animation: addedDraftHighlight 10s ease-out; border-radius: 6px; outline: 2px solid rgba(37, 99, 235, 0.34); outline-offset: 3px; }
 .draft-information.draft-added-highlight { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16); }
 @keyframes addedDraftHighlight {
-  0%, 72% { background: #fff3bf; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18); }
-  100% { background: transparent; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  0%, 88% { background: #fff3bf; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18); outline-color: rgba(37, 99, 235, 0.34); }
+  100% { background: transparent; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); outline-color: rgba(37, 99, 235, 0); }
 }
 .result-actions { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .result-actions button { min-height: 42px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }

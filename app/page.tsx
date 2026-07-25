@@ -1403,11 +1403,17 @@ export default function Home() {
     setAddedReviewSuggestions((current) => current.includes(issueKey) ? current : [...current, issueKey]);
     setHighlightedSuggestionText(suggestion);
     setDocumentActionMessage(`‘${issue.title}’ 수정 제안을 본문 하단에 추가했습니다.`);
-    window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
       const highlightedElement = resultRef.current?.querySelector<HTMLElement>("[data-review-highlight='true']");
-      highlightedElement?.scrollIntoView({ block: "center", behavior: "smooth" });
-      resultRef.current?.focus();
-    });
+      if (!highlightedElement || !resultRef.current) return;
+      const editor = resultRef.current;
+      editor.scrollTo({
+        top: Math.max(0, highlightedElement.offsetTop - (editor.clientHeight / 2) + (highlightedElement.offsetHeight / 2)),
+        behavior: "smooth",
+      });
+      editor.scrollIntoView({ block: "center", behavior: "smooth" });
+      highlightedElement.focus({ preventScroll: true });
+    }, 80);
   };
 
   const copyGeneratedDocument = async () => {
