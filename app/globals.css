@@ -31,7 +31,7 @@ button:disabled { cursor: wait; opacity: .72; }
 .topbar { position: sticky; top: 0; z-index: 30; height: 72px; padding: 0 max(32px, calc((100vw - 1280px) / 2)); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--anthropic-hairline); background: rgba(247,249,252,.92); backdrop-filter: blur(12px); }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
 .brand-button { padding: 0; border: 0; background: transparent; }
-.brand span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 999px; background: var(--anthropic-slate); color: var(--anthropic-ivory); font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.brand span { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(21, 94, 239, .22); border-radius: 999px; background: var(--green); color: #ffffff; box-shadow: 0 8px 18px rgba(21, 94, 239, .18); font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .brand strong { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
 .topbar > p { margin: 0; color: var(--muted); font-size: 12px; }
 .topbar-nav { display: flex; align-items: center; gap: 6px; }
