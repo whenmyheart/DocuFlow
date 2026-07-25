@@ -1411,8 +1411,6 @@ export default function Home() {
         top: Math.max(0, highlightedElement.offsetTop - (editor.clientHeight / 2) + (highlightedElement.offsetHeight / 2)),
         behavior: "smooth",
       });
-      editor.scrollIntoView({ block: "center", behavior: "smooth" });
-      highlightedElement.focus({ preventScroll: true });
     }, 80);
   };
 
