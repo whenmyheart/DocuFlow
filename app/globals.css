@@ -444,13 +444,69 @@ footer { padding: 0 20px 34px; color: #89958e; text-align: center; font-size: 9p
 .export-preview-actions button { min-height: 38px; padding: 0 18px; border: 1px solid #d0c7ba; border-radius: 999px; background: white; color: var(--green); font-size: 10px; font-weight: 800; white-space: nowrap; }
 .export-preview-actions .download-preview-button { border-color: var(--green); background: var(--green); color: white; }
 
+/* Sharper DocuFlow identity: document-tool UI with restrained corners. */
+.privacy-note,
+.type-card,
+.type-symbol,
+.input-panel,
+.result-panel,
+.field-grid input,
+.field-grid textarea,
+.paper-icon,
+.complete-banner,
+.document-name-editor,
+.formatted-document,
+.draft-information,
+.draft-tools button,
+.review-button,
+.review-result,
+.review-issue small,
+.result-actions button,
+.storage-section,
+.search-box,
+.autosaved-draft-card,
+.autosaved-draft-card button,
+.saved-card,
+.saved-card button,
+.saved-title-editor input,
+.no-documents,
+.export-preview-header > button,
+.export-preview-tabs button,
+.export-preview-actions button,
+.landing-actions button,
+.generate-button,
+.panel-head-actions button,
+.topbar-nav button {
+  border-radius: 4px;
+}
+
+.input-panel { border-radius: 6px 0 0 6px; }
+.result-panel { border-radius: 0 6px 6px 0; }
+.type-card { border-radius: 6px; }
+.type-symbol { border-radius: 4px; }
+.formatted-document,
+.storage-section,
+.autosaved-draft-card,
+.saved-card,
+.review-result,
+.complete-banner { border-radius: 6px; }
+.brand span,
+.privacy-note > span,
+.paper-icon b,
+.ai-loader,
+.error-icon,
+.complete-banner > span,
+.review-summary > span,
+.storage-title > strong { border-radius: 6px; }
+.hero h1 em::after { border-radius: 0; }
+
 @media (max-width: 980px) {
   .type-grid { grid-template-columns: repeat(2, 1fr); }
   .section-heading { grid-template-columns: 150px 1fr; }
   .section-heading > p { grid-column: 2; }
   .creator { margin-inline: 20px; grid-template-columns: 1fr; }
-  .input-panel { border-radius: 16px 16px 0 0; }
-  .result-panel { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 16px 16px; }
+  .input-panel { border-radius: 6px 6px 0 0; }
+  .result-panel { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 6px 6px; }
   .result-empty { min-height: 420px; }
   .storage-section { margin-inline: 20px; }
   .saved-grid { grid-template-columns: repeat(2, 1fr); }
