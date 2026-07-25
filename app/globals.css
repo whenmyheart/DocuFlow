@@ -147,6 +147,14 @@ button:disabled { cursor: wait; opacity: .72; }
 .formatted-document .draft-bullet { position: relative; padding-left: 17px; }
 .formatted-document .draft-bullet::before { position: absolute; left: 2px; color: var(--green); content: "•"; font-weight: 900; }
 .formatted-document .draft-important { margin: 15px 0; padding: 12px 14px; border-left: 3px solid var(--green); background: var(--mint); color: var(--green-dark); font-weight: 800; }
+.draft-editor-shell { width: 100%; max-height: 620px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; background: #e9eef6; outline: none; }
+.draft-editor-shell:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(21,94,239,.12); }
+.draft-editor-preview { padding: 18px; display: flex; justify-content: center; }
+.draft-editor-preview .export-preview-document { width: 100%; min-height: 560px; padding: 28px 30px; border: 1px solid #c9d3e2; box-shadow: 0 12px 28px rgba(15, 23, 42, .08); transform-origin: top center; }
+.draft-editor-preview .official-notice-preview { padding: 32px 30px; }
+.draft-text-editor { padding: 12px; display: grid; gap: 7px; border-top: 1px solid var(--line); background: #fff; }
+.draft-text-editor span { color: var(--muted); font-size: 10px; font-weight: 800; }
+.draft-text-editor textarea { width: 100%; resize: vertical; min-height: 160px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; color: #111; font-size: 12px; line-height: 1.75; }
 .document-template-notice { padding: 42px 38px; color: #111; font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif; }
 .document-template-notice h3 { position: relative; margin: 0 0 30px; padding: 12px 0 13px; border: 0; color: #111; font-size: 25px; line-height: 1.35; text-align: center; letter-spacing: -.03em; }
 .document-template-notice h3::before,

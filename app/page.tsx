@@ -298,25 +298,28 @@ function formatKoreanDocumentDate(date = new Date()) {
   return `${year}. ${month}. ${day}.`;
 }
 
-function DraftEditor({ text, onChange, editorRef, documentTypeId }: { text: string; onChange: (value: string) => void; editorRef: React.RefObject<HTMLDivElement | null>; documentTypeId: string }) {
-  const blocks = useMemo(() => createDraftBlocks(text), [text]);
-
-  const updateLine = (sourceIndex: number, value: string) => {
-    const lines = text.split(/\r?\n/);
-    lines[sourceIndex] = value.replace(/\s+/g, " ").trim();
-    onChange(lines.join("\n"));
-  };
-
+function DraftEditor({
+  text,
+  onChange,
+  editorRef,
+  documentTypeId,
+  details,
+}: {
+  text: string;
+  onChange: (value: string) => void;
+  editorRef: React.RefObject<HTMLDivElement | null>;
+  documentTypeId: string;
+  details: Array<{ label: string; value: string }>;
+}) {
   return (
-    <div className={`formatted-document document-template-${documentTypeId}`} id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
-      {blocks.map((block) => {
-        if (block.kind === "title") return <h3 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h3>;
-        if (block.kind === "heading") return <h4 key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</h4>;
-        if (block.kind === "information") return <div className="draft-information" key={block.sourceIndex}><strong>{block.label}</strong><span contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `${block.label}: ${event.currentTarget.textContent ?? ""}`)}>{block.value}</span></div>;
-        if (block.kind === "bullet") return <p className="draft-bullet" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, `- ${event.currentTarget.textContent ?? ""}`)}>{block.text}</p>;
-        if (block.kind === "important") return <p className="draft-important" key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
-        return <p key={block.sourceIndex} contentEditable suppressContentEditableWarning onBlur={(event) => updateLine(block.sourceIndex, event.currentTarget.textContent ?? "")}>{block.text}</p>;
-      })}
+    <div className="draft-editor-shell" id="generatedDocument" ref={editorRef} tabIndex={-1} aria-label="생성된 문서 편집 영역">
+      <div className="draft-editor-preview" aria-label="생성된 문서 양식 미리보기">
+        <ExportPreviewDocument text={text} details={details} documentTypeId={documentTypeId} />
+      </div>
+      <label className="draft-text-editor">
+        <span>본문 내용 수정</span>
+        <textarea value={text} onChange={(event) => onChange(event.target.value)} rows={9} />
+      </label>
     </div>
   );
 }
@@ -1726,7 +1729,7 @@ export default function Home() {
                 <div className="complete-banner"><span>✓</span><div><strong>초안 작성 완료</strong><p>{generationSummary}</p></div></div>
                 <div className="draft-label">생성된 문서 <small>제목이나 문장을 눌러 직접 수정할 수 있습니다.</small></div>
                 <label className="document-name-editor"><span>문서명</span><input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="저장 목록에서 사용할 문서명을 입력해 주세요." /></label>
-                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} documentTypeId={selectedType.id} />
+                <DraftEditor text={generatedText} onChange={updateGeneratedDocument} editorRef={resultRef} documentTypeId={selectedType.id} details={exportPreviewDetails} />
                 <div className="draft-tools" aria-label="문서 복사 및 내려받기">
                   <button type="button" onClick={copyGeneratedDocument}>복사</button>
                   <button type="button" onClick={() => setExportPreviewFormat("word")} aria-haspopup="dialog">Word</button>
