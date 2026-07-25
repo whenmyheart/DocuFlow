@@ -1370,6 +1370,18 @@ export default function Home() {
     setDocumentActionMessage("");
   };
 
+  const addReviewSuggestionToDocument = (issue: AiDocumentReview["issues"][number]) => {
+    const suggestion = issue.suggestion?.trim();
+    if (!suggestion) return;
+
+    setGeneratedText((current) => {
+      const trimmed = current.trimEnd();
+      return `${trimmed}${trimmed ? "\n\n" : ""}${suggestion}`;
+    });
+    setDocumentActionMessage(`‘${issue.title}’ 수정 제안을 본문 하단에 추가했습니다.`);
+    window.requestAnimationFrame(() => resultRef.current?.focus());
+  };
+
   const copyGeneratedDocument = async () => {
     try {
       await navigator.clipboard.writeText(generatedText);
@@ -1717,7 +1729,12 @@ export default function Home() {
                           <article className={`review-issue ${issue.level}`} key={`${issue.title}-${index}`}>
                             <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{issue.title}</strong></div>
                             <p>{issue.detail}</p>
-                            {issue.suggestion && <small><b>수정 제안</b>{issue.suggestion}</small>}
+                            {issue.suggestion && (
+                              <div className="review-suggestion">
+                                <small><b>수정 제안</b>{issue.suggestion}</small>
+                                <button type="button" onClick={() => addReviewSuggestionToDocument(issue)}>본문에 추가</button>
+                              </div>
+                            )}
                           </article>
                         ))}
                       </div>
