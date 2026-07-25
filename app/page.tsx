@@ -351,7 +351,7 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     </tbody></table>
   );
 
-  if (documentTypeId) {
+  if (documentTypeId === "notice" || documentTypeId === "custom") {
     const introductionIndex = bodyBlocks.findIndex((block) => block.kind === "body");
     const introduction = introductionIndex >= 0 ? bodyBlocks[introductionIndex] : null;
     const detailBlocks = bodyBlocks.filter((block, index) => index !== introductionIndex && block.kind !== "information");
@@ -410,14 +410,19 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
   if (documentTypeId === "proposal") {
     return (
       <article className="export-preview-document form-template proposal-template" aria-label="기획서 미리보기">
-        <h1>{documentTitle}</h1>
-        {detailRows(details.slice(0, 3))}
-        {details.slice(3).map((detail) => (
-          <section className="template-section-block" key={detail.label}>
-            <h2 className="template-section-heading">{detail.label}</h2>
-            <p className="template-section-body">{detail.value}</p>
-          </section>
-        ))}
+        <header className="proposal-form-header">
+          <div className="proposal-title-box">
+            <h1>기 획 서</h1>
+            <p>{documentTitle}</p>
+          </div>
+          <div className="template-approval-cell">{approvalBox}</div>
+        </header>
+        {detailRows(details.slice(0, 4))}
+        <table className="proposal-plan-table"><tbody>
+          {details.slice(4).map((detail) => (
+            <tr key={detail.label}><th>{detail.label}</th><td>{detail.value}</td></tr>
+          ))}
+        </tbody></table>
         {narrativeBlocks.length > 0 && (
           <section className="template-section-block">
             <h2 className="template-section-heading">세부 실행 내용</h2>
@@ -430,18 +435,46 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
 
   if (documentTypeId === "report" || documentTypeId === "minutes") {
     const isMinutes = documentTypeId === "minutes";
+    if (!isMinutes) {
+      return (
+        <article className="export-preview-document form-template report-template report-cover-template" aria-label="보고서 미리보기">
+          <header className="report-cover-header">
+            <span>REPORT</span>
+            <strong>강남대학교</strong>
+          </header>
+          <div className="report-cover-emblem" aria-hidden="true">KNU</div>
+          <section className="report-cover-meta" aria-label="보고서 정보">
+            <h1>{documentTitle}</h1>
+            {details.slice(0, 7).map((detail) => <p key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></p>)}
+          </section>
+          {narrativeBlocks.length > 0 && (
+            <section className="template-section-block report-cover-body">
+              <h2 className="template-section-heading">보고 내용</h2>
+              <div className="template-section-content">{narrativeBlocks.map(renderBlock)}</div>
+            </section>
+          )}
+        </article>
+      );
+    }
     return (
-      <article className={`export-preview-document form-template ${isMinutes ? "minutes-template" : "report-template"}`} aria-label={`${isMinutes ? "회의록" : "보고서"} 미리보기`}>
-        {titleWithApproval(isMinutes ? "회 의 록" : "보 고 서")}
-        <table className="template-document-subject"><tbody><tr><th>{isMinutes ? "회의명" : "제목"}</th><td>{documentTitle}</td></tr></tbody></table>
-        {detailRows(details.slice(0, isMinutes ? 4 : 3))}
+      <article className="export-preview-document form-template minutes-template" aria-label="회의록 미리보기">
+        {titleWithApproval("회 의 록")}
+        <table className="minutes-info-table"><tbody>
+          <tr><th>회의명</th><td colSpan={3}>{documentTitle}</td></tr>
+          {details.slice(0, 4).map((detail, index) => index % 2 === 0 && (
+            <tr key={detail.label}>
+              <th>{detail.label}</th><td>{detail.value}</td>
+              <th>{details[index + 1]?.label ?? "비고"}</th><td>{details[index + 1]?.value ?? ""}</td>
+            </tr>
+          ))}
+        </tbody></table>
         {narrativeBlocks.length > 0 && (
           <section className="template-section-block">
-            <h2 className="template-section-heading">{isMinutes ? "회의 내용" : "보고 내용"}</h2>
+            <h2 className="template-section-heading">회의 내용</h2>
             <div className="template-section-content">{narrativeBlocks.map(renderBlock)}</div>
           </section>
         )}
-        {details.slice(isMinutes ? 4 : 3).map((detail) => (
+        {details.slice(4).map((detail) => (
           <section className="template-section-block" key={detail.label}>
             <h2 className="template-section-heading">{detail.label}</h2>
             <p className="template-section-body">{detail.value}</p>
@@ -456,9 +489,9 @@ function ExportPreviewDocument({ text, details, documentTypeId }: { text: string
     const remainingDetails = details.filter((detail) => !featuredDetails.includes(detail));
     return (
       <article className="export-preview-document event-template" aria-label="행사 안내문 미리보기">
-        <span className="event-kicker">EVENT INFORMATION</span>
+        <span className="event-kicker">KANGNAM UNIVERSITY EVENT</span>
         <h1>{documentTitle}</h1>
-        <div className="event-accent" aria-hidden="true" />
+        <div className="event-confetti" aria-hidden="true" />
         <div className="event-featured">{featuredDetails.map((detail) => <p key={detail.label}><strong>{detail.label}</strong><span>{detail.value}</span></p>)}</div>
         <div className="event-body">{narrativeBlocks.map(renderBlock)}</div>
         {detailRows(remainingDetails)}
@@ -898,7 +931,7 @@ async function buildWordDocumentBlob({
   const bodyParagraphs = narrative.map((block) => paragraph(block.text, { bold: block.kind === "heading" || block.kind === "important", size: block.kind === "heading" ? 22 : 20, after: 120 }));
   const children: Array<InstanceType<typeof Paragraph> | InstanceType<typeof Table>> = [];
 
-  if (documentTypeId) {
+  if (documentTypeId === "notice" || documentTypeId === "custom") {
     const [introductionBlock, ...remainingBlocks] = narrative;
     const introduction = introductionBlock ? paragraph(introductionBlock.text, { bold: introductionBlock.kind === "heading" || introductionBlock.kind === "important", size: introductionBlock.kind === "heading" ? 22 : 20, after: 120 }) : null;
     const footerDepartment = details.find((detail) => /담당|부서|기관|주관|작성/.test(detail.label))?.value ?? "담당 부서";
