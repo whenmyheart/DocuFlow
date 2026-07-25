@@ -1643,7 +1643,7 @@ export default function Home() {
   return (
     <main>
       <header className="topbar">
-        <button className="brand brand-button" type="button" onClick={showTypes} aria-label="DocuFlow 문서 목록으로"><span>DF</span><strong>DocuFlow</strong></button>
+        <button className="brand brand-button" type="button" onClick={showLanding} aria-label="DocuFlow 소개로 이동"><span>DF</span><strong>DocuFlow</strong></button>
         <nav className="topbar-nav" aria-label="주요 화면">
           <button type="button" className={appView === "landing" ? "active" : ""} onClick={showLanding}>소개</button>
           <button type="button" className={appView === "types" ? "active" : ""} onClick={showTypes}>문서 선택</button>
